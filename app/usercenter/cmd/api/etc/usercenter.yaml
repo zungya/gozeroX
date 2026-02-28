@@ -1,0 +1,22 @@
+Name: usercenter-api
+Host: 0.0.0.0
+Port: 1001
+Mode: dev
+
+#jwtAuth
+Auth:
+  AccessSecret: "a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1"
+  AccessExpire: 86400
+
+#监控
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4001
+  Path: /metrics
+
+#rpc service
+UsercenterRpcConf:
+  Endpoints:
+    - 127.0.0.1:2001
+  NonBlock: true
+

@@ -1,0 +1,89 @@
+syntax = "v1"
+
+info (
+	title:  "社交APP内容微服务"
+	desc:   "社交应用推文内容管理API，仅对外提供发布/删除/用户推文列表查询能力"
+	author: "xxx"
+	email:  "xxx@163.com"
+)
+
+type (
+	// 推文基础信息
+	Tweet {
+		Tid          int64    `json:"tid"`
+		Uid          int64    `json:"uid"`
+		Content      string   `json:"content"`
+		MediaUrls    []string `json:"mediaUrls"`
+		Tags         []string `json:"tags"`
+		IsPublic     bool     `json:"isPublic"`
+		CreatedAt    int64    `json:"createdAt"`
+		IsDeleted    bool     `json:"is_deleted"`
+		LikeCount    int64    `json:"likeCount"`
+		CommentCount int64    `json:"commentCount"`
+	}
+	// 分页信息（单独定义）
+	Pagination {
+		Page  int64 `json:"page"`
+		Size  int64 `json:"size"`
+		Total int64 `json:"total"`
+	}
+	// 列表数据（单独定义）
+	ListData {
+		List       []Tweet    `json:"list"`
+		Pagination Pagination `json:"pagination"`
+	}
+	// 发布推文请求
+	CreateTweetReq {
+		Uid       int64    `json:"uid" validate:"required"`
+		Content   string   `json:"content" validate:"max=280"`
+		MediaUrls []string `json:"mediaUrls" validate:"max=9"`
+		Tags      []string `json:"tags"`
+		IsPublic  bool     `json:"isPublic" validate:"required"`
+	}
+	CreateTweetResp {
+		Code int64  `json:"code"`
+		Msg  string `json:"msg"`
+		Data Tweet  `json:"data"`
+	}
+	// 删除推文请求
+	DeleteTweetReq {
+		Tid int64 `path:"tid" validate:"required"`
+		Uid int64 `json:"uid" validate:"required"`
+	}
+	DeleteTweetResp {
+		Code int64  `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	// 推文列表查询请求
+	ListTweetsUidReq {
+		Uid  int64  `form:"uid" validate:"required"`
+		Page int64  `form:"page,default=1" validate:"min=1"`
+		Size int64  `form:"size,default=10" validate:"min=1,max=50"`
+		Sort string `form:"sort,default=created_at_desc" validate:"in=created_at_desc|created_at_asc"`
+	}
+	ListTweetsUidResp {
+		Code int64    `json:"code"`
+		Msg  string   `json:"msg"`
+		Data ListData `json:"data"` // 使用上面定义的 ListData
+	}
+)
+
+// 需JWT认证的接口（前端发布/删除推文）
+@server (
+	prefix: /contentService/v1
+	group:  content
+)
+service content-api {
+	// 查询指定用户的推文列表（用户主页场景）
+	@handler listTweets
+	get /listTweetsUid (ListTweetsUidReq) returns (ListTweetsUidResp)
+
+	// 发布推文
+	@handler createTweet
+	post /createTweet (CreateTweetReq) returns (CreateTweetResp)
+
+	// 删除推文
+	@handler deleteTweet
+	delete /deleteTweet (DeleteTweetReq) returns (DeleteTweetResp)
+}
+

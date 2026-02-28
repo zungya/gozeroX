@@ -1,0 +1,54 @@
+global:
+  scrape_interval:
+  external_labels:
+    monitor: 'codelab-monitor'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 5s  #global catch time
+    static_configs:
+      - targets: ['127.0.0.1:9090']
+
+  - job_name: 'user-api'
+    static_configs:
+      - targets: [ 'gozeroX:4001' ]
+        labels:
+          job: user-api
+          app: user-api
+          env: dev
+  - job_name: 'user-rpc'
+    static_configs:
+      - targets: [ 'gozeroX:4002' ]
+        labels:
+          job: user-rpc
+          app: user-rpc
+          env: dev
+  - job_name: 'content-api'
+    static_configs:
+      - targets: [ 'gozeroX:4003' ]
+        labels:
+          job: content-api
+          app: content-api
+          env: dev
+  - job_name: 'content-rpc'
+    static_configs:
+      - targets: [ 'gozeroX:4004' ]
+        labels:
+          job: content-rpc
+          app: content-rpc
+          env: dev
+  - job_name: 'interact-api'
+    static_configs:
+      - targets: [ 'gozeroX:4005' ]
+        labels:
+          job: interact-api
+          app: interact-api
+          env: dev
+  - job_name: 'interact-rpc'
+    static_configs:
+      - targets: [ 'gozeroX:4006' ]
+        labels:
+          job: interact-rpc
+          app: interact-rpc
+          env: dev
+

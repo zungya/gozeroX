@@ -1,0 +1,100 @@
+syntax = "v1"
+
+info (
+	title:  "社交APP用户服务"
+	desc:   "社交应用用户中心API定义"
+	author: "xxx"
+	email:  "xxx@163.com"
+)
+
+// 基础用户信息(暂不使用)
+//type User {
+// Uid      int64  `json:"uid"` //唯一标识
+// Mobile   string `json:"mobile"` //手机号
+// Nickname string `json:"nickname"` //昵称
+// Sex      int64  `json:"sex"` // 0:未知 1:男 2:女
+// Avatar   string `json:"avatar"` // 头像URL
+// Bio      string `json:"bio,optional"` // 个人简介
+// // 社交数据
+// FollowCount int64 `json:"followCount"` // 关注人数
+// FansCount   int64 `json:"fansCount"` // 粉丝数
+// PostCount   int64 `json:"postCount"` // 动态/帖子数
+// ViewCount   int64 `json:"viewCount"` // 访问量
+// // 用户状态
+// Status    int64  `json:"status"` //0正常，1封禁(保留字段，不使用)
+// CreatedAt string `json:"createdAt,optional"` //创建日期
+// UpdatedAt string `json:"updatedAt,optional"` //上次更新时间
+//}
+// 精简用户信息（用于个人主页公共列表展示）
+type UserInfo {
+	Uid         int64  `json:"uid"`
+	Nickname    string `json:"nickname"`
+	Avatar      string `json:"avatar"`
+	Bio         string `json:"bio,optional"`
+	FollowCount int64  `json:"followCount"`
+	FansCount   int64  `json:"fansCount"`
+	PostCount   int64  `json:"postCount"`
+}
+
+// ==================== 认证相关 ====================
+type (
+	RegisterReq {
+		Mobile   string `json:"mobile"`
+		Password string `json:"password"`
+	}
+	RegisterResp {
+		AccessToken  string   `json:"accessToken"`
+		AccessExpire int64    `json:"accessExpire"`
+		UserInfo     UserInfo `json:"userInfo"`
+	}
+)
+
+type (
+	LoginReq {
+		Mobile   string `json:"mobile"`
+		Password string `json:"password"`
+	}
+	LoginResp {
+		AccessToken  string   `json:"accessToken"`
+		AccessExpire int64    `json:"accessExpire"`
+		UserInfo     UserInfo `json:"userInfo"`
+	}
+)
+
+// ==================== 用户信息相关 ====================
+type (
+	UserInfoReq {
+		Uid int64 `json:"uid"`
+	}
+	UserInfoResp {
+		UserInfo UserInfo `json:"userInfo"`
+	}
+)
+
+//============================> userCenter v1 <============================
+//no need jwt
+@server (
+	prefix: usercenter/v1
+	group:  user
+)
+service usercenter {
+	@doc "register"
+	@handler register
+	post /user/register (RegisterReq) returns (RegisterResp)
+
+	@doc "login"
+	@handler login
+	post /user/login (LoginReq) returns (LoginResp)
+}
+
+//need jwt
+@server (
+	prefix: usercenter/v1
+	group:  user
+)
+service usercenter {
+	@doc "get user info"
+	@handler detail
+	post /user/detail (UserInfoReq) returns (UserInfoResp)
+}
+

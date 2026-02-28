@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+package pb;
+// ==================== 通用响应结构 ====================
+message JwtToken {
+  string accessToken = 1;
+  int64 accessExpire = 2;   // 过期时间戳
+}
+
+// ==================== 用户信息 ====================
+message UserInfo {
+  int64 uid = 1;
+  string nickname = 2;
+  string avatar = 3;
+  string bio = 4;
+  int64 follow_count = 5;
+  int64 fans_count = 6;
+  int64 post_count = 7;
+}
+
+message UserBrief {      //互动微服务返回使用
+  int64 uid = 1;
+  string nickname = 2;
+  string avatar = 3;
+}
+
+// ==================== 注册登录 ====================
+message RegisterReq {
+  string mobile = 1;
+  string password = 2;
+}
+
+message RegisterResp {
+  UserInfo user_info = 1;
+  JwtToken token = 2;  // 注册后直接登录，返回token
+}
+
+message LoginReq {
+  string mobile = 1;
+  string password = 2;
+}
+
+message LoginResp {
+  UserInfo user_info = 1;
+  JwtToken token = 2;  // 登录成功返回token
+}
+
+// ==================== 用户信息查询 ====================
+message GetUserInfoReq {
+  int64 uid = 1;
+}
+
+message GetUserInfoResp {
+  UserInfo user_info = 1;
+}
+
+// ==========批量查询（给互动微服务返回评论区） ============
+message BatchUserBriefReq {
+  repeated int64 uids = 1;
+}
+
+message BatchUserBriefResp {
+  repeated UserBrief users = 1;
+}
+
+// ==================== 统计更新 ====================
+message UpdateStatsUidReq {
+  int64 uid = 1;
+  UpdateTypeUid update_type_uid = 2;
+  int64 delta = 3;
+  UpdateFrom update_from =4;
+  int64 update_time =5;
+}
+
+enum UpdateTypeUid {
+  UNKNOWN = 0;
+  FOLLOW_COUNT = 1;
+  FANS_COUNT = 2;
+  POST_COUNT = 3;
+}
+
+enum UpdateFrom {
+  UserService = 0;
+  ContentService = 1;
+  InteractiveService = 2;
+  NotifyService = 3;
+  ReCmdAndSearchService =4;
+}
+
+
+message UpdateStatsUidResp {
+  bool success = 1;
+}
+
+
+// ==================== 服务定义 ====================
+service UserCenter {
+  // 用户注册（返回token）
+  rpc Register(RegisterReq) returns (RegisterResp);
+
+  // 用户登录（返回user_info + token）
+  rpc Login(LoginReq) returns (LoginResp);
+
+  // 获取用户信息
+  rpc GetUserInfo(GetUserInfoReq) returns (GetUserInfoResp);
+
+  // 批量获取用户简要信息（给互动微服务的）
+  rpc BatchGetUserBrief(BatchUserBriefReq) returns (BatchUserBriefResp);
+
+  // 更新用户统计（给内容微服务和互动微服务）
+  rpc UpdateStatsUid(UpdateStatsUidReq) returns (UpdateStatsUidResp);
+}
+

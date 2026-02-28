@@ -1,0 +1,134 @@
+syntax = "v1"
+
+info (
+    title: "互动微服务API"
+    desc: "前端调用接口，处理评论、点赞等互动功能"
+    author: "GoZeroX"
+    version: "1.0.0"
+)
+
+// ==================== 基础类型 ====================
+
+type PageRequest {
+    Page     int `json:"page,default=1" form:"page,default=1"`
+    PageSize int `json:"pageSize,default=20" form:"pageSize,default=20"`
+}
+
+type PageResponse {
+    Total    int64 `json:"total"`
+    Page     int   `json:"page"`
+    PageSize int   `json:"pageSize"`
+}
+
+// ==================== 评论相关 ====================
+
+// 评论信息（API层返回给前端的完整数据，带isLiked）
+type Comment {
+    Cid        int64  `json:"cid"`
+    Tid        int64  `json:"tid"`
+    Uid        int64  `json:"uid"`
+    NickName   string `json:"nickname"`   // 从用户服务获取
+    Avatar     string `json:"avatar"`     // 从用户服务获取
+    ParentId   int64  `json:"parentId"`
+    RootId     int64  `json:"rootId"`
+    Content    string `json:"content"`
+    LikeCount  int64  `json:"likeCount"`
+    ReplyCount int64  `json:"replyCount"`
+    CreateTime string `json:"createTime"`
+    IsLiked    bool   `json:"isLiked"`    // 当前用户是否点赞
+}
+
+// 创建评论
+type CreateCommentReq {
+    Tid      int64  `json:"tid"`
+    Content  string `json:"content"`
+    ParentId int64  `json:"parentId,optional"`
+}
+
+type CreateCommentResp {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+    Data    Comment `json:"data"`
+}
+
+// 删除评论
+type DeleteCommentReq {
+    Cid int64 `path:"cid"`
+}
+
+type DeleteCommentResp {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+}
+
+// 获取评论列表（顶级评论）
+type GetCommentsReq {
+    Tid      int64  `form:"tid"`
+    Sort     string `form:"sort,default=hot"`    // hot-热门 new-最新
+    PageRequest
+}
+
+type GetCommentsResp {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+    PageResponse
+    Data []Comment `json:"data"`
+}
+
+// 获取评论回复列表
+type GetRepliesReq {
+    Cid int64 `form:"cid"`
+    PageRequest
+}
+
+type GetRepliesResp {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+    PageResponse
+    Data []Comment `json:"data"`
+}
+
+// ==================== 点赞相关 ====================
+
+// 点赞/取消点赞
+type LikeReq {
+    TargetType int   `json:"targetType"` // 1-内容 2-评论
+    TargetId   int64 `json:"targetId"`
+    Action     int   `json:"action"`     // 1-点赞 0-取消
+}
+
+type LikeResp {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+    Data struct {
+        TargetType int   `json:"targetType"`
+        TargetId   int64 `json:"targetId"`
+        LikeCount  int64 `json:"likeCount"`
+        IsLiked    bool  `json:"isLiked"`
+    } `json:"data"`
+}
+
+// ==================== Service ====================
+
+@server(
+    prefix: /interactService/v1
+    group: interaction
+)
+service interaction-api {
+    // 评论接口
+    @handler createComment
+    post /createComment (CreateCommentReq) returns (CreateCommentResp)
+
+    @handler deleteComment
+    delete /deleteComment (DeleteCommentReq) returns (DeleteCommentResp)
+
+    @handler getComments
+    get /getComments (GetCommentsReq) returns (GetCommentsResp)
+
+    @handler getReplies
+    get /getReplies (GetRepliesReq) returns (GetRepliesResp)
+
+    // 点赞接口
+    @handler like
+    post /like (LikeReq) returns (LikeResp)
+}

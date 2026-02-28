@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+package pb;
+
+// ========== 基础结构体 ==========
+message Tweet {
+  int64  tid = 1;          // 推文ID
+  int64  uid = 2;          // 发布用户ID
+  string content = 3;      // 推文内容
+  repeated string media_urls = 4; // 图片链接
+  repeated string tags = 5; // 标签
+  bool is_public = 6;      // 是否公开
+  int64  created_at = 7;   // 创建时间
+  bool is_deleted = 8;      // 是否删除
+  int64 like_count = 9;    // 点赞数
+  int64 comment_count = 10; // 评论数
+}
+
+// ========== 用户主页推文列表查询 ==========
+message ListTweetsUidReq {
+  int64  query_uid = 1;     // 要查询的用户ID（主页所属用户）
+  bool is_public = 2;      // 是否也要查询不公开的
+  int64  page = 3;          // 页码
+  int64  size = 4;          // 每页条数
+  SortType sort = 5;         // 排序
+}
+enum SortType {
+  CREATED_AT_DESC = 0; // 对应 API 层 "created_at_desc"
+  CREATED_AT_ASC = 1;  // 对应 API 层 "created_at_asc"
+}
+
+// 响应：和之前一致
+message ListTweetsUidResp {
+  int64 code = 1;
+  string msg = 2;
+  repeated Tweet tweets = 3; // 过滤后的推文列表
+  Pagination pagination = 4; // 分页信息
+}
+
+message Pagination {
+  int64 page = 1;
+  int64 size = 2;
+  int64 total = 3;
+}
+
+
+
+// ========== 单条推文查询==========
+message GetTweetByTidReq {
+  int64 tid = 1;
+}
+
+message GetTweetByTidResp {
+  int64 code = 1;
+  string msg = 2;
+  Tweet tweet = 3;
+}
+
+// ========== 批量推文查询（供推荐与搜索微服务调用） ==========
+message BatchGetTweetsReq {
+  repeated int64 tids = 1;
+}
+
+message BatchGetTweetsResp {
+  int64 code = 1;
+  string msg = 2;
+  repeated Tweet tweets = 3; // 仅返回公开推文
+}
+
+
+
+
+// 创建推文
+message CreateTweetReq {
+  int64 uid = 1;
+  string content = 2;
+  repeated string media_urls = 3;
+  repeated string tags = 4;
+  bool is_public = 5;
+}
+
+message CreateTweetResp {
+  int64 code = 1;
+  string msg = 2;
+  Tweet tweet = 3;
+}
+
+// 删除推文
+message DeleteTweetReq {
+  int64 tid = 1;
+  int64 uid = 2;
+}
+
+message DeleteTweetResp {
+  int64 code = 1;
+  string msg = 2;
+}
+
+
+
+// ==================== 统计更新 ====================
+message UpdateStatsTidReq {
+  int64 tid = 1;
+  UpdateTypeTid update_type_tid = 2;
+  int64 delta = 3;
+  UpdateFrom update_from =4;
+  int64 update_time =5;
+}
+
+enum UpdateTypeTid {
+  UNKNOWN = 0;
+  Like_COUNT = 1;
+  Comment_COUNT = 2;
+}
+
+enum UpdateFrom {
+  UserService = 0;
+  ContentService = 1;
+  InteractiveService = 2;
+  NotifyService = 3;
+  ReCmdAndSearchService =4;
+}
+
+
+message UpdateStatsTidResp {
+  bool success = 1;
+}
+
+// ========== 核心RPC服务定义 ==========
+service Content {
+  // 1. 用户主页推文列表（带权限过滤）
+  rpc ListTweetsUid(ListTweetsUidReq) returns (ListTweetsUidResp);
+  // 2. 单条推文查询
+  rpc GetTweetByTid(GetTweetByTidReq) returns (GetTweetByTidResp);
+  // 3. 批量推文查询（仅返回公开的）
+  rpc BatchGetTweets(BatchGetTweetsReq) returns (BatchGetTweetsResp);
+  // 4. 创建推文（供API调用）
+  rpc CreateTweet(CreateTweetReq) returns (CreateTweetResp);
+  // 5. 删除推文（供API调用）
+  rpc DeleteTweet(DeleteTweetReq) returns (DeleteTweetResp);
+  // 6. 更新统计数（供互动微服务调用）
+  rpc UpdateStatsTid(UpdateStatsTidReq) returns (UpdateStatsTidResp);
+}

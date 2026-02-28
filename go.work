@@ -1,0 +1,14 @@
+go 1.25.5
+
+use (
+	./app/contentService/cmd/api
+	./app/contentService/cmd/rpc
+	./app/contentService/model
+	./app/interactService/cmd/api
+	./app/interactService/cmd/rpc
+	./app/interactService/model
+	./app/usercenter/cmd/api
+	./app/usercenter/cmd/rpc
+	./app/usercenter/model
+	./pkg
+)
