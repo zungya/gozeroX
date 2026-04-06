@@ -24,10 +24,7 @@ type (
 	GetTweetByTidResp  = pb.GetTweetByTidResp
 	ListTweetsUidReq   = pb.ListTweetsUidReq
 	ListTweetsUidResp  = pb.ListTweetsUidResp
-	Pagination         = pb.Pagination
 	Tweet              = pb.Tweet
-	UpdateStatsTidReq  = pb.UpdateStatsTidReq
-	UpdateStatsTidResp = pb.UpdateStatsTidResp
 
 	Content interface {
 		// 1. 用户主页推文列表（带权限过滤）
@@ -40,8 +37,6 @@ type (
 		CreateTweet(ctx context.Context, in *CreateTweetReq, opts ...grpc.CallOption) (*CreateTweetResp, error)
 		// 5. 删除推文（供API调用）
 		DeleteTweet(ctx context.Context, in *DeleteTweetReq, opts ...grpc.CallOption) (*DeleteTweetResp, error)
-		// 6. 更新统计数（供互动微服务调用）
-		UpdateStatsTid(ctx context.Context, in *UpdateStatsTidReq, opts ...grpc.CallOption) (*UpdateStatsTidResp, error)
 	}
 
 	defaultContent struct {
@@ -83,10 +78,4 @@ func (m *defaultContent) CreateTweet(ctx context.Context, in *CreateTweetReq, op
 func (m *defaultContent) DeleteTweet(ctx context.Context, in *DeleteTweetReq, opts ...grpc.CallOption) (*DeleteTweetResp, error) {
 	client := pb.NewContentClient(m.cli.Conn())
 	return client.DeleteTweet(ctx, in, opts...)
-}
-
-// 6. 更新统计数（供互动微服务调用）
-func (m *defaultContent) UpdateStatsTid(ctx context.Context, in *UpdateStatsTidReq, opts ...grpc.CallOption) (*UpdateStatsTidResp, error) {
-	client := pb.NewContentClient(m.cli.Conn())
-	return client.UpdateStatsTid(ctx, in, opts...)
 }

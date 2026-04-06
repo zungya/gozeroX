@@ -57,7 +57,7 @@ func (l *ListTweetsUidLogic) ListTweetsUid(in *pb.ListTweetsUidReq) (*pb.ListTwe
 	// 4. 查询数据库
 	tweets, total, err := l.svcCtx.TweetModel.FindByUid(l.ctx, in.QueryUid, isPublic, in.Page, in.Size, sortField, sortOrder)
 	if err != nil {
-		logx.Errorf("Find tweets by uid error: %v", err)
+		logx.Errorf("Find tweets by uid errorx: %v", err)
 		return nil, err
 	}
 

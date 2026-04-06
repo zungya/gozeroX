@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -17,7 +16,6 @@ type (
 	// and implement the added methods in customTweetModel.
 	TweetModel interface {
 		tweetModel
-		SoftDelete(ctx context.Context, tid int64, uid int64) error
 		FindBatchByTids(ctx context.Context, tids []int64) ([]*Tweet, error)
 		FindByUid(ctx context.Context, uid int64, isPublic *bool, page, size int64, sortField, sortOrder string) ([]*Tweet, int64, error)
 		UpdateStatsWithValues(ctx context.Context, tid int64, updateType int64, delta int64) (beforeVal int64, afterVal int64, err error)
@@ -35,17 +33,6 @@ func NewTweetModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) T
 	}
 }
 
-// SoftDelete 软删除推文
-func (m *customTweetModel) SoftDelete(ctx context.Context, tid int64, uid int64) error {
-	query := fmt.Sprintf("UPDATE %s SET is_deleted = true, updated_at = $1 WHERE tid = $2 AND uid = $3", m.table)
-
-	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
-		return conn.ExecCtx(ctx, query, time.Now(), tid, uid)
-	})
-
-	return err
-}
-
 func (m *customTweetModel) FindBatchByTids(ctx context.Context, tids []int64) ([]*Tweet, error) {
 	if len(tids) == 0 {
 		return []*Tweet{}, nil
@@ -60,7 +47,7 @@ func (m *customTweetModel) FindBatchByTids(ctx context.Context, tids []int64) ([
 	}
 
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE tid IN (%s) AND is_public = true AND is_deleted = false",
-		tweetRows, m.table, strings.Join(placeholders, ","))
+		tweetRows, m.table2, strings.Join(placeholders, ","))
 
 	var resp []*Tweet
 	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...)
@@ -86,7 +73,7 @@ func (m *customTweetModel) FindByUid(ctx context.Context, uid int64, isPublic *b
 	whereClause := strings.Join(conditions, " AND ")
 
 	// 2. 查询总数
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", m.table, whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", m.table3, whereClause)
 	var total int64
 	err := m.QueryRowNoCacheCtx(ctx, &total, countQuery, args...)
 	if err != nil {
@@ -119,7 +106,7 @@ func (m *customTweetModel) FindByUid(ctx context.Context, uid int64, isPublic *b
 	offset := (page - 1) * size
 	argPos++
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
-		tweetRows, m.table, whereClause, sortField, sortOrder, argPos, argPos+1)
+		tweetRows, m.table3, whereClause, sortField, sortOrder, argPos, argPos+1)
 
 	args = append(args, size, offset)
 

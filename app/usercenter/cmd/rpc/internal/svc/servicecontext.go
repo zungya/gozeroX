@@ -14,11 +14,10 @@ import (
 )
 
 type ServiceContext struct {
-	Config            config.Config
-	RedisClient       *redis.Redis
-	CacheManager      *cache.Manager
-	UserModel         model.UserModel
-	UserStatsLogModel model.UserStatsLogModel
+	Config       config.Config
+	RedisClient  *redis.Redis
+	CacheManager *cache.Manager
+	UserModel    model.UserModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -35,11 +34,10 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	cacheManager := cache.NewManager(redisClient)
 
 	return &ServiceContext{
-		Config:            c,
-		RedisClient:       redisClient,
-		CacheManager:      cacheManager,
-		UserModel:         model.NewUserModel(sqlConn, c.Cache),         // 注意：这里用 c.Cache
-		UserStatsLogModel: model.NewUserStatsLogModel(sqlConn, c.Cache), // 注意：这里用 c.Cache
+		Config:       c,
+		RedisClient:  redisClient,
+		CacheManager: cacheManager,
+		UserModel:    model.NewUserModel(sqlConn, c.Cache), // 注意：这里用 c.Cache
 	}
 }
 

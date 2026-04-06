@@ -19,28 +19,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Interaction_CreateComment_FullMethodName      = "/pb.Interaction/CreateComment"
-	Interaction_DeleteComment_FullMethodName      = "/pb.Interaction/DeleteComment"
-	Interaction_GetComments_FullMethodName        = "/pb.Interaction/GetComments"
-	Interaction_GetReplies_FullMethodName         = "/pb.Interaction/GetReplies"
-	Interaction_Like_FullMethodName               = "/pb.Interaction/Like"
-	Interaction_GetLikeStatus_FullMethodName      = "/pb.Interaction/GetLikeStatus"
-	Interaction_BatchGetLikeStatus_FullMethodName = "/pb.Interaction/BatchGetLikeStatus"
+	Interaction_CreateComment_FullMethodName = "/pb.Interaction/CreateComment"
+	Interaction_DeleteComment_FullMethodName = "/pb.Interaction/DeleteComment"
+	Interaction_GetComments_FullMethodName   = "/pb.Interaction/GetComments"
+	Interaction_GetReplies_FullMethodName    = "/pb.Interaction/GetReplies"
+	Interaction_LikeTweet_FullMethodName     = "/pb.Interaction/LikeTweet"
+	Interaction_LikeComment_FullMethodName   = "/pb.Interaction/LikeComment"
 )
 
 // InteractionClient is the client API for Interaction service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InteractionClient interface {
-	// 评论服务
+	// 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
 	CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentReq, opts ...grpc.CallOption) (*DeleteCommentResp, error)
 	GetComments(ctx context.Context, in *GetCommentsReq, opts ...grpc.CallOption) (*GetCommentsResp, error)
 	GetReplies(ctx context.Context, in *GetRepliesReq, opts ...grpc.CallOption) (*GetRepliesResp, error)
-	// 点赞服务
-	Like(ctx context.Context, in *LikeReq, opts ...grpc.CallOption) (*LikeResp, error)
-	GetLikeStatus(ctx context.Context, in *GetLikeStatusReq, opts ...grpc.CallOption) (*GetLikeStatusResp, error)
-	BatchGetLikeStatus(ctx context.Context, in *BatchGetLikeStatusReq, opts ...grpc.CallOption) (*BatchGetLikeStatusResp, error)
+	// 点赞/取消点赞行为
+	LikeTweet(ctx context.Context, in *LikeTweetReq, opts ...grpc.CallOption) (*LikeTweetResp, error)
+	LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error)
 }
 
 type interactionClient struct {
@@ -91,30 +89,20 @@ func (c *interactionClient) GetReplies(ctx context.Context, in *GetRepliesReq, o
 	return out, nil
 }
 
-func (c *interactionClient) Like(ctx context.Context, in *LikeReq, opts ...grpc.CallOption) (*LikeResp, error) {
+func (c *interactionClient) LikeTweet(ctx context.Context, in *LikeTweetReq, opts ...grpc.CallOption) (*LikeTweetResp, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(LikeResp)
-	err := c.cc.Invoke(ctx, Interaction_Like_FullMethodName, in, out, cOpts...)
+	out := new(LikeTweetResp)
+	err := c.cc.Invoke(ctx, Interaction_LikeTweet_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *interactionClient) GetLikeStatus(ctx context.Context, in *GetLikeStatusReq, opts ...grpc.CallOption) (*GetLikeStatusResp, error) {
+func (c *interactionClient) LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetLikeStatusResp)
-	err := c.cc.Invoke(ctx, Interaction_GetLikeStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *interactionClient) BatchGetLikeStatus(ctx context.Context, in *BatchGetLikeStatusReq, opts ...grpc.CallOption) (*BatchGetLikeStatusResp, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BatchGetLikeStatusResp)
-	err := c.cc.Invoke(ctx, Interaction_BatchGetLikeStatus_FullMethodName, in, out, cOpts...)
+	out := new(LikeCommentResp)
+	err := c.cc.Invoke(ctx, Interaction_LikeComment_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,15 +113,14 @@ func (c *interactionClient) BatchGetLikeStatus(ctx context.Context, in *BatchGet
 // All implementations must embed UnimplementedInteractionServer
 // for forward compatibility.
 type InteractionServer interface {
-	// 评论服务
+	// 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
 	CreateComment(context.Context, *CreateCommentReq) (*CreateCommentResp, error)
 	DeleteComment(context.Context, *DeleteCommentReq) (*DeleteCommentResp, error)
 	GetComments(context.Context, *GetCommentsReq) (*GetCommentsResp, error)
 	GetReplies(context.Context, *GetRepliesReq) (*GetRepliesResp, error)
-	// 点赞服务
-	Like(context.Context, *LikeReq) (*LikeResp, error)
-	GetLikeStatus(context.Context, *GetLikeStatusReq) (*GetLikeStatusResp, error)
-	BatchGetLikeStatus(context.Context, *BatchGetLikeStatusReq) (*BatchGetLikeStatusResp, error)
+	// 点赞/取消点赞行为
+	LikeTweet(context.Context, *LikeTweetReq) (*LikeTweetResp, error)
+	LikeComment(context.Context, *LikeCommentReq) (*LikeCommentResp, error)
 	mustEmbedUnimplementedInteractionServer()
 }
 
@@ -156,14 +143,11 @@ func (UnimplementedInteractionServer) GetComments(context.Context, *GetCommentsR
 func (UnimplementedInteractionServer) GetReplies(context.Context, *GetRepliesReq) (*GetRepliesResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetReplies not implemented")
 }
-func (UnimplementedInteractionServer) Like(context.Context, *LikeReq) (*LikeResp, error) {
-	return nil, status.Error(codes.Unimplemented, "method Like not implemented")
+func (UnimplementedInteractionServer) LikeTweet(context.Context, *LikeTweetReq) (*LikeTweetResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeTweet not implemented")
 }
-func (UnimplementedInteractionServer) GetLikeStatus(context.Context, *GetLikeStatusReq) (*GetLikeStatusResp, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetLikeStatus not implemented")
-}
-func (UnimplementedInteractionServer) BatchGetLikeStatus(context.Context, *BatchGetLikeStatusReq) (*BatchGetLikeStatusResp, error) {
-	return nil, status.Error(codes.Unimplemented, "method BatchGetLikeStatus not implemented")
+func (UnimplementedInteractionServer) LikeComment(context.Context, *LikeCommentReq) (*LikeCommentResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeComment not implemented")
 }
 func (UnimplementedInteractionServer) mustEmbedUnimplementedInteractionServer() {}
 func (UnimplementedInteractionServer) testEmbeddedByValue()                     {}
@@ -258,56 +242,38 @@ func _Interaction_GetReplies_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Interaction_Like_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LikeReq)
+func _Interaction_LikeTweet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeTweetReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InteractionServer).Like(ctx, in)
+		return srv.(InteractionServer).LikeTweet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Interaction_Like_FullMethodName,
+		FullMethod: Interaction_LikeTweet_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InteractionServer).Like(ctx, req.(*LikeReq))
+		return srv.(InteractionServer).LikeTweet(ctx, req.(*LikeTweetReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Interaction_GetLikeStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetLikeStatusReq)
+func _Interaction_LikeComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeCommentReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InteractionServer).GetLikeStatus(ctx, in)
+		return srv.(InteractionServer).LikeComment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Interaction_GetLikeStatus_FullMethodName,
+		FullMethod: Interaction_LikeComment_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InteractionServer).GetLikeStatus(ctx, req.(*GetLikeStatusReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Interaction_BatchGetLikeStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BatchGetLikeStatusReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(InteractionServer).BatchGetLikeStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Interaction_BatchGetLikeStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InteractionServer).BatchGetLikeStatus(ctx, req.(*BatchGetLikeStatusReq))
+		return srv.(InteractionServer).LikeComment(ctx, req.(*LikeCommentReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -336,16 +302,12 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Interaction_GetReplies_Handler,
 		},
 		{
-			MethodName: "Like",
-			Handler:    _Interaction_Like_Handler,
+			MethodName: "LikeTweet",
+			Handler:    _Interaction_LikeTweet_Handler,
 		},
 		{
-			MethodName: "GetLikeStatus",
-			Handler:    _Interaction_GetLikeStatus_Handler,
-		},
-		{
-			MethodName: "BatchGetLikeStatus",
-			Handler:    _Interaction_BatchGetLikeStatus_Handler,
+			MethodName: "LikeComment",
+			Handler:    _Interaction_LikeComment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

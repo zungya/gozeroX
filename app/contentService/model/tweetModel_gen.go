@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/lib/pq"
 	"github.com/zeromicro/go-zero/core/stores/builder"
@@ -22,36 +21,39 @@ import (
 var (
 	tweetFieldNames          = builder.RawFieldNames(&Tweet{}, true)
 	tweetRows                = strings.Join(tweetFieldNames, ",")
-	tweetRowsExpectAutoSet   = strings.Join(stringx.Remove(tweetFieldNames, "tid", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"), ",")
-	tweetRowsWithPlaceHolder = builder.PostgreSqlJoin(stringx.Remove(tweetFieldNames, "tid", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"))
+	tweetRowsExpectAutoSet   = strings.Join(stringx.Remove(tweetFieldNames, "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"), ",")
+	tweetRowsWithPlaceHolder = builder.PostgreSqlJoin(stringx.Remove(tweetFieldNames, "snow_tid", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"))
 
-	cachePublicTweetTidPrefix = "cache:public:tweet:tid:"
+	cachePublicTweetSnowTidPrefix = "cache:public:tweet:snowTid:"
 )
 
 type (
 	tweetModel interface {
 		Insert(ctx context.Context, data *Tweet) (sql.Result, error)
-		FindOne(ctx context.Context, tid int64) (*Tweet, error)
+		FindOne(ctx context.Context, snowTid int64) (*Tweet, error)
 		Update(ctx context.Context, data *Tweet) error
-		Delete(ctx context.Context, tid int64) error
+		Delete(ctx context.Context, snowTid int64) error
 	}
 
 	defaultTweetModel struct {
 		sqlc.CachedConn
-		table string
+		table  string
+		table2 string
+		table3 string
 	}
 
 	Tweet struct {
-		Tid          int64          `db:"tid"`           // 推文ID，自增主键
-		Uid          int64          `db:"uid"`           // 发布用户ID，关联user表
+		SnowTid      int64          `db:"snow_tid"`      // 业务主键
+		Tid          int64          `db:"tid"`           // 推文ID，自增主键，不使用
+		Uid          int64          `db:"uid"`           // 发布用户ID，关联用户表
 		Content      string         `db:"content"`       // 推文内容
-		MediaUrls    pq.StringArray `db:"media_urls"`    // 图片链接列表（数组）
-		Tags         pq.StringArray `db:"tags"`          // 标签列表（数组）
-		IsPublic     bool           `db:"is_public"`     // 是否公开：true公开，false私密
+		MediaUrls    pq.StringArray `db:"media_urls"`    // 图片链接列表
+		Tags         pq.StringArray `db:"tags"`          // 标签列表
+		IsPublic     bool           `db:"is_public"`     // 是否公开
 		LikeCount    int64          `db:"like_count"`    // 点赞数
 		CommentCount int64          `db:"comment_count"` // 评论数
-		CreatedAt    time.Time      `db:"created_at"`    // 创建时间（带时区）
-		IsDeleted    bool           `db:"is_deleted"`    // 是否已删除：true已删除，false未删除
+		CreatedAt    int64          `db:"created_at"`    // 创建时间
+		Status       int64          `db:"status"`        // 状态（0正常，1删除，2审核）
 	}
 )
 
@@ -59,24 +61,26 @@ func newTweetModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *
 	return &defaultTweetModel{
 		CachedConn: sqlc.NewConn(conn, c, opts...),
 		table:      `"public"."tweet"`,
+		table2:     "public.tweet_normal_public", // 读表，分离读写
+		table3:     "public.tweet_normal",        // 读表，分离读写
 	}
 }
 
-func (m *defaultTweetModel) Delete(ctx context.Context, tid int64) error {
-	publicTweetTidKey := fmt.Sprintf("%s%v", cachePublicTweetTidPrefix, tid)
+func (m *defaultTweetModel) Delete(ctx context.Context, snowTid int64) error {
+	publicTweetSnowTidKey := fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, snowTid)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("delete from %s where tid = $1", m.table)
-		return conn.ExecCtx(ctx, query, tid)
-	}, publicTweetTidKey)
+		query := fmt.Sprintf("delete from %s where snow_tid = $1", m.table)
+		return conn.ExecCtx(ctx, query, snowTid)
+	}, publicTweetSnowTidKey)
 	return err
 }
 
-func (m *defaultTweetModel) FindOne(ctx context.Context, tid int64) (*Tweet, error) {
-	publicTweetTidKey := fmt.Sprintf("%s%v", cachePublicTweetTidPrefix, tid)
+func (m *defaultTweetModel) FindOne(ctx context.Context, snowTid int64) (*Tweet, error) {
+	publicTweetSnowTidKey := fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, snowTid)
 	var resp Tweet
-	err := m.QueryRowCtx(ctx, &resp, publicTweetTidKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
-		query := fmt.Sprintf("select %s from %s where tid = $1 limit 1", tweetRows, m.table)
-		return conn.QueryRowCtx(ctx, v, query, tid)
+	err := m.QueryRowCtx(ctx, &resp, publicTweetSnowTidKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where snow_tid = $1 limit 1", tweetRows, m.table3)
+		return conn.QueryRowCtx(ctx, v, query, snowTid)
 	})
 	switch err {
 	case nil:
@@ -89,29 +93,29 @@ func (m *defaultTweetModel) FindOne(ctx context.Context, tid int64) (*Tweet, err
 }
 
 func (m *defaultTweetModel) Insert(ctx context.Context, data *Tweet) (sql.Result, error) {
-	publicTweetTidKey := fmt.Sprintf("%s%v", cachePublicTweetTidPrefix, data.Tid)
+	publicTweetSnowTidKey := fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, data.SnowTid)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8)", m.table, tweetRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.Uid, data.Content, data.MediaUrls, data.Tags, data.IsPublic, data.LikeCount, data.CommentCount, data.IsDeleted)
-	}, publicTweetTidKey)
+		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", m.table, tweetRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.SnowTid, data.Tid, data.Uid, data.Content, data.MediaUrls, data.Tags, data.IsPublic, data.LikeCount, data.CommentCount, data.Status)
+	}, publicTweetSnowTidKey)
 	return ret, err
 }
 
 func (m *defaultTweetModel) Update(ctx context.Context, data *Tweet) error {
-	publicTweetTidKey := fmt.Sprintf("%s%v", cachePublicTweetTidPrefix, data.Tid)
+	publicTweetSnowTidKey := fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, data.SnowTid)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("update %s set %s where tid = $1", m.table, tweetRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.Tid, data.Uid, data.Content, data.MediaUrls, data.Tags, data.IsPublic, data.LikeCount, data.CommentCount, data.IsDeleted)
-	}, publicTweetTidKey)
+		query := fmt.Sprintf("update %s set %s where snow_tid = $1", m.table, tweetRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, data.SnowTid, data.Tid, data.Uid, data.Content, data.MediaUrls, data.Tags, data.IsPublic, data.LikeCount, data.CommentCount, data.Status)
+	}, publicTweetSnowTidKey)
 	return err
 }
 
 func (m *defaultTweetModel) formatPrimary(primary any) string {
-	return fmt.Sprintf("%s%v", cachePublicTweetTidPrefix, primary)
+	return fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, primary)
 }
 
 func (m *defaultTweetModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
-	query := fmt.Sprintf("select %s from %s where tid = $1 limit 1", tweetRows, m.table)
+	query := fmt.Sprintf("select %s from %s where snow_tid = $1 limit 1", tweetRows, m.table)
 	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 

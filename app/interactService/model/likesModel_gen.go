@@ -25,6 +25,7 @@ var (
 	likesRowsWithPlaceHolder = builder.PostgreSqlJoin(stringx.Remove(likesFieldNames, "likes_id", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"))
 
 	cachePublicLikesLikesIdPrefix               = "cache:public:likes:likesId:"
+	cachePublicLikesSnowLikesIdPrefix           = "cache:public:likes:snowLikesId:"
 	cachePublicLikesUidTargetTypeTargetIdPrefix = "cache:public:likes:uid:targetType:targetId:"
 )
 
@@ -32,6 +33,7 @@ type (
 	likesModel interface {
 		Insert(ctx context.Context, data *Likes) (sql.Result, error)
 		FindOne(ctx context.Context, likesId int64) (*Likes, error)
+		FindOneBySnowLikesId(ctx context.Context, snowLikesId int64) (*Likes, error)
 		FindOneByUidTargetTypeTargetId(ctx context.Context, uid int64, targetType int64, targetId int64) (*Likes, error)
 		Update(ctx context.Context, data *Likes) error
 		Delete(ctx context.Context, likesId int64) error
@@ -43,13 +45,14 @@ type (
 	}
 
 	Likes struct {
-		LikesId    int64     `db:"likes_id"`    // 点赞ID，自增主键
-		Uid        int64     `db:"uid"`         // 点赞用户ID，关联user表
-		TargetType int64     `db:"target_type"` // 目标类型：1-内容(tid)，2-评论(cid)
-		TargetId   int64     `db:"target_id"`   // 目标ID（内容就是tid，评论就是cid）
-		Status     int64     `db:"status"`      // 状态：1-点赞，0-取消
-		CreateTime time.Time `db:"create_time"` // 创建时间（带时区）
-		UpdateTime time.Time `db:"update_time"` // 更新时间（带时区）
+		LikesId     int64     `db:"likes_id"`      // 点赞ID，自增主键（备用）
+		Uid         int64     `db:"uid"`           // 点赞用户ID，关联user表
+		TargetType  int64     `db:"target_type"`   // 目标类型：1-内容(tid)，2-评论(cid)
+		TargetId    int64     `db:"target_id"`     // 目标ID（内容就是tid，评论就是cid/snow_cid）
+		Status      int64     `db:"status"`        // 状态：1-点赞，0-取消
+		CreateTime  time.Time `db:"create_time"`   // 创建时间（带时区）
+		UpdateTime  time.Time `db:"update_time"`   // 更新时间（带时区）
+		SnowLikesId int64     `db:"snow_likes_id"` // 雪花ID业务主键（前端后端交互主要使用）
 	}
 )
 
@@ -67,11 +70,12 @@ func (m *defaultLikesModel) Delete(ctx context.Context, likesId int64) error {
 	}
 
 	publicLikesLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesLikesIdPrefix, likesId)
+	publicLikesSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesSnowLikesIdPrefix, data.SnowLikesId)
 	publicLikesUidTargetTypeTargetIdKey := fmt.Sprintf("%s%v:%v:%v", cachePublicLikesUidTargetTypeTargetIdPrefix, data.Uid, data.TargetType, data.TargetId)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("delete from %s where likes_id = $1", m.table)
 		return conn.ExecCtx(ctx, query, likesId)
-	}, publicLikesLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
+	}, publicLikesLikesIdKey, publicLikesSnowLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
 	return err
 }
 
@@ -82,6 +86,26 @@ func (m *defaultLikesModel) FindOne(ctx context.Context, likesId int64) (*Likes,
 		query := fmt.Sprintf("select %s from %s where likes_id = $1 limit 1", likesRows, m.table)
 		return conn.QueryRowCtx(ctx, v, query, likesId)
 	})
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlc.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *defaultLikesModel) FindOneBySnowLikesId(ctx context.Context, snowLikesId int64) (*Likes, error) {
+	publicLikesSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesSnowLikesIdPrefix, snowLikesId)
+	var resp Likes
+	err := m.QueryRowIndexCtx(ctx, &resp, publicLikesSnowLikesIdKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where snow_likes_id = $1 limit 1", likesRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, snowLikesId); err != nil {
+			return nil, err
+		}
+		return resp.LikesId, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
@@ -114,11 +138,12 @@ func (m *defaultLikesModel) FindOneByUidTargetTypeTargetId(ctx context.Context, 
 
 func (m *defaultLikesModel) Insert(ctx context.Context, data *Likes) (sql.Result, error) {
 	publicLikesLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesLikesIdPrefix, data.LikesId)
+	publicLikesSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesSnowLikesIdPrefix, data.SnowLikesId)
 	publicLikesUidTargetTypeTargetIdKey := fmt.Sprintf("%s%v:%v:%v", cachePublicLikesUidTargetTypeTargetIdPrefix, data.Uid, data.TargetType, data.TargetId)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4)", m.table, likesRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.Uid, data.TargetType, data.TargetId, data.Status)
-	}, publicLikesLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
+		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5)", m.table, likesRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Uid, data.TargetType, data.TargetId, data.Status, data.SnowLikesId)
+	}, publicLikesLikesIdKey, publicLikesSnowLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
 	return ret, err
 }
 
@@ -129,11 +154,12 @@ func (m *defaultLikesModel) Update(ctx context.Context, newData *Likes) error {
 	}
 
 	publicLikesLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesLikesIdPrefix, data.LikesId)
+	publicLikesSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesSnowLikesIdPrefix, data.SnowLikesId)
 	publicLikesUidTargetTypeTargetIdKey := fmt.Sprintf("%s%v:%v:%v", cachePublicLikesUidTargetTypeTargetIdPrefix, data.Uid, data.TargetType, data.TargetId)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where likes_id = $1", m.table, likesRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, newData.LikesId, newData.Uid, newData.TargetType, newData.TargetId, newData.Status)
-	}, publicLikesLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
+		return conn.ExecCtx(ctx, query, newData.LikesId, newData.Uid, newData.TargetType, newData.TargetId, newData.Status, newData.SnowLikesId)
+	}, publicLikesLikesIdKey, publicLikesSnowLikesIdKey, publicLikesUidTargetTypeTargetIdKey)
 	return err
 }
 

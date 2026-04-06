@@ -24,7 +24,7 @@ Cache:
 Log:
   ServiceName: contentService-rpc
   Mode: console        # console, file, volume
-  Level: info          # debug, info, error, severe
+  Level: info          # debug, info, errorx, severe
   Path: logs          # 文件日志路径
   KeepDays: 7         # 保留天数
   StackCooldownMillis: 100  # 堆栈间隔

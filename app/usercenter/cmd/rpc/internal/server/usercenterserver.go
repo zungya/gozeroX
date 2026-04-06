@@ -46,9 +46,3 @@ func (s *UserCenterServer) BatchGetUserBrief(ctx context.Context, in *pb.BatchUs
 	l := logic.NewBatchGetUserBriefLogic(ctx, s.svcCtx)
 	return l.BatchGetUserBrief(in)
 }
-
-// 更新用户统计（给内容微服务和互动微服务）
-func (s *UserCenterServer) UpdateStatsUid(ctx context.Context, in *pb.UpdateStatsUidReq) (*pb.UpdateStatsUidResp, error) {
-	l := logic.NewUpdateStatsUidLogic(ctx, s.svcCtx)
-	return l.UpdateStatsUid(in)
-}

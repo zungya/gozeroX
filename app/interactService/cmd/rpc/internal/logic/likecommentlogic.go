@@ -9,22 +9,22 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type BatchGetLikeStatusLogic struct {
+type LikeCommentLogic struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 	logx.Logger
 }
 
-func NewBatchGetLikeStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) *BatchGetLikeStatusLogic {
-	return &BatchGetLikeStatusLogic{
+func NewLikeCommentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LikeCommentLogic {
+	return &LikeCommentLogic{
 		ctx:    ctx,
 		svcCtx: svcCtx,
 		Logger: logx.WithContext(ctx),
 	}
 }
 
-func (l *BatchGetLikeStatusLogic) BatchGetLikeStatus(in *pb.BatchGetLikeStatusReq) (*pb.BatchGetLikeStatusResp, error) {
+func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentResp, error) {
 	// todo: add your logic here and delete this line
 
-	return &pb.BatchGetLikeStatusResp{}, nil
+	return &pb.LikeCommentResp{}, nil
 }

@@ -23,7 +23,6 @@ const (
 	UserCenter_Login_FullMethodName             = "/pb.UserCenter/Login"
 	UserCenter_GetUserInfo_FullMethodName       = "/pb.UserCenter/GetUserInfo"
 	UserCenter_BatchGetUserBrief_FullMethodName = "/pb.UserCenter/BatchGetUserBrief"
-	UserCenter_UpdateStatsUid_FullMethodName    = "/pb.UserCenter/UpdateStatsUid"
 )
 
 // UserCenterClient is the client API for UserCenter service.
@@ -40,8 +39,6 @@ type UserCenterClient interface {
 	GetUserInfo(ctx context.Context, in *GetUserInfoReq, opts ...grpc.CallOption) (*GetUserInfoResp, error)
 	// 批量获取用户简要信息（给互动微服务的）
 	BatchGetUserBrief(ctx context.Context, in *BatchUserBriefReq, opts ...grpc.CallOption) (*BatchUserBriefResp, error)
-	// 更新用户统计（给内容微服务和互动微服务）
-	UpdateStatsUid(ctx context.Context, in *UpdateStatsUidReq, opts ...grpc.CallOption) (*UpdateStatsUidResp, error)
 }
 
 type userCenterClient struct {
@@ -92,16 +89,6 @@ func (c *userCenterClient) BatchGetUserBrief(ctx context.Context, in *BatchUserB
 	return out, nil
 }
 
-func (c *userCenterClient) UpdateStatsUid(ctx context.Context, in *UpdateStatsUidReq, opts ...grpc.CallOption) (*UpdateStatsUidResp, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateStatsUidResp)
-	err := c.cc.Invoke(ctx, UserCenter_UpdateStatsUid_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // UserCenterServer is the server API for UserCenter service.
 // All implementations must embed UnimplementedUserCenterServer
 // for forward compatibility.
@@ -116,8 +103,6 @@ type UserCenterServer interface {
 	GetUserInfo(context.Context, *GetUserInfoReq) (*GetUserInfoResp, error)
 	// 批量获取用户简要信息（给互动微服务的）
 	BatchGetUserBrief(context.Context, *BatchUserBriefReq) (*BatchUserBriefResp, error)
-	// 更新用户统计（给内容微服务和互动微服务）
-	UpdateStatsUid(context.Context, *UpdateStatsUidReq) (*UpdateStatsUidResp, error)
 	mustEmbedUnimplementedUserCenterServer()
 }
 
@@ -139,9 +124,6 @@ func (UnimplementedUserCenterServer) GetUserInfo(context.Context, *GetUserInfoRe
 }
 func (UnimplementedUserCenterServer) BatchGetUserBrief(context.Context, *BatchUserBriefReq) (*BatchUserBriefResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method BatchGetUserBrief not implemented")
-}
-func (UnimplementedUserCenterServer) UpdateStatsUid(context.Context, *UpdateStatsUidReq) (*UpdateStatsUidResp, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpdateStatsUid not implemented")
 }
 func (UnimplementedUserCenterServer) mustEmbedUnimplementedUserCenterServer() {}
 func (UnimplementedUserCenterServer) testEmbeddedByValue()                    {}
@@ -236,24 +218,6 @@ func _UserCenter_BatchGetUserBrief_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserCenter_UpdateStatsUid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateStatsUidReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserCenterServer).UpdateStatsUid(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserCenter_UpdateStatsUid_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserCenterServer).UpdateStatsUid(ctx, req.(*UpdateStatsUidReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // UserCenter_ServiceDesc is the grpc.ServiceDesc for UserCenter service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -276,10 +240,6 @@ var UserCenter_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchGetUserBrief",
 			Handler:    _UserCenter_BatchGetUserBrief_Handler,
-		},
-		{
-			MethodName: "UpdateStatsUid",
-			Handler:    _UserCenter_UpdateStatsUid_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

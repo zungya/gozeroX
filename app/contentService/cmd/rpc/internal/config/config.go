@@ -20,4 +20,6 @@ type Config struct {
 	}
 
 	Cache cache.CacheConf // ✅ 必须有这个
+
+	UserCenterRpcConf zrpc.RpcClientConf
 }

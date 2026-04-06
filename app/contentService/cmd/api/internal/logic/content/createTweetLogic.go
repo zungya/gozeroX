@@ -55,7 +55,7 @@ func (l *CreateTweetLogic) CreateTweet(req *types.CreateTweetReq) (resp *types.C
 		IsPublic:  req.IsPublic,
 	})
 	if err != nil {
-		logx.Errorf("CreateTweet RPC error: %v", err)
+		logx.Errorf("CreateTweet RPC errorx: %v", err)
 		return nil, err
 	}
 

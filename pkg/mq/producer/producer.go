@@ -24,7 +24,7 @@ func NewProducer(addrs []string, topic string) *Producer {
 func (p *Producer) Push(ctx context.Context, key string, value interface{}) error {
 	data, err := json.Marshal(value)
 	if err != nil {
-		logx.Errorf("Marshal message error: %v", err)
+		logx.Errorf("Marshal message errorx: %v", err)
 		return err
 	}
 

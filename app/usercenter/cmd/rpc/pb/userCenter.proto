@@ -33,8 +33,10 @@ message RegisterReq {
 }
 
 message RegisterResp {
-  UserInfo user_info = 1;
-  JwtToken token = 2;  // 注册后直接登录，返回token
+  int64 code = 1;
+  string msg = 2;
+  UserInfo user_info = 3;
+  JwtToken token = 4;  // 注册后直接登录，返回token
 }
 
 message LoginReq {
@@ -43,8 +45,10 @@ message LoginReq {
 }
 
 message LoginResp {
-  UserInfo user_info = 1;
-  JwtToken token = 2;  // 登录成功返回token
+  int64 code = 1;
+  string msg = 2;
+  UserInfo user_info = 3;
+  JwtToken token = 4;  // 登录成功返回token
 }
 
 // ==================== 用户信息查询 ====================
@@ -53,45 +57,20 @@ message GetUserInfoReq {
 }
 
 message GetUserInfoResp {
-  UserInfo user_info = 1;
+  int64 code = 1;
+  string msg = 2;
+  UserInfo user_info = 3;
 }
 
-// ==========批量查询（给互动微服务返回评论区） ============
+// ==========批量查询（给其它微服务返回评论区） ============
 message BatchUserBriefReq {
   repeated int64 uids = 1;
 }
 
 message BatchUserBriefResp {
-  repeated UserBrief users = 1;
-}
-
-// ==================== 统计更新 ====================
-message UpdateStatsUidReq {
-  int64 uid = 1;
-  UpdateTypeUid update_type_uid = 2;
-  int64 delta = 3;
-  UpdateFrom update_from =4;
-  int64 update_time =5;
-}
-
-enum UpdateTypeUid {
-  UNKNOWN = 0;
-  FOLLOW_COUNT = 1;
-  FANS_COUNT = 2;
-  POST_COUNT = 3;
-}
-
-enum UpdateFrom {
-  UserService = 0;
-  ContentService = 1;
-  InteractiveService = 2;
-  NotifyService = 3;
-  ReCmdAndSearchService =4;
-}
-
-
-message UpdateStatsUidResp {
-  bool success = 1;
+  int64 code = 1;
+  string msg = 2;
+  repeated UserBrief users = 3;
 }
 
 
@@ -109,7 +88,5 @@ service UserCenter {
   // 批量获取用户简要信息（给互动微服务的）
   rpc BatchGetUserBrief(BatchUserBriefReq) returns (BatchUserBriefResp);
 
-  // 更新用户统计（给内容微服务和互动微服务）
-  rpc UpdateStatsUid(UpdateStatsUidReq) returns (UpdateStatsUidResp);
 }
 

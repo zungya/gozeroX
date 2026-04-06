@@ -23,8 +23,6 @@ type (
 	LoginResp          = pb.LoginResp
 	RegisterReq        = pb.RegisterReq
 	RegisterResp       = pb.RegisterResp
-	UpdateStatsUidReq  = pb.UpdateStatsUidReq
-	UpdateStatsUidResp = pb.UpdateStatsUidResp
 	UserBrief          = pb.UserBrief
 	UserInfo           = pb.UserInfo
 
@@ -37,8 +35,6 @@ type (
 		GetUserInfo(ctx context.Context, in *GetUserInfoReq, opts ...grpc.CallOption) (*GetUserInfoResp, error)
 		// 批量获取用户简要信息（给互动微服务的）
 		BatchGetUserBrief(ctx context.Context, in *BatchUserBriefReq, opts ...grpc.CallOption) (*BatchUserBriefResp, error)
-		// 更新用户统计（给内容微服务和互动微服务）
-		UpdateStatsUid(ctx context.Context, in *UpdateStatsUidReq, opts ...grpc.CallOption) (*UpdateStatsUidResp, error)
 	}
 
 	defaultUserCenter struct {
@@ -74,10 +70,4 @@ func (m *defaultUserCenter) GetUserInfo(ctx context.Context, in *GetUserInfoReq,
 func (m *defaultUserCenter) BatchGetUserBrief(ctx context.Context, in *BatchUserBriefReq, opts ...grpc.CallOption) (*BatchUserBriefResp, error) {
 	client := pb.NewUserCenterClient(m.cli.Conn())
 	return client.BatchGetUserBrief(ctx, in, opts...)
-}
-
-// 更新用户统计（给内容微服务和互动微服务）
-func (m *defaultUserCenter) UpdateStatsUid(ctx context.Context, in *UpdateStatsUidReq, opts ...grpc.CallOption) (*UpdateStatsUidResp, error) {
-	client := pb.NewUserCenterClient(m.cli.Conn())
-	return client.UpdateStatsUid(ctx, in, opts...)
 }

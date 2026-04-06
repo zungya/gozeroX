@@ -21,113 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type UpdateTypeUid int32
-
-const (
-	UpdateTypeUid_UNKNOWN      UpdateTypeUid = 0
-	UpdateTypeUid_FOLLOW_COUNT UpdateTypeUid = 1
-	UpdateTypeUid_FANS_COUNT   UpdateTypeUid = 2
-	UpdateTypeUid_POST_COUNT   UpdateTypeUid = 3
-)
-
-// Enum value maps for UpdateTypeUid.
-var (
-	UpdateTypeUid_name = map[int32]string{
-		0: "UNKNOWN",
-		1: "FOLLOW_COUNT",
-		2: "FANS_COUNT",
-		3: "POST_COUNT",
-	}
-	UpdateTypeUid_value = map[string]int32{
-		"UNKNOWN":      0,
-		"FOLLOW_COUNT": 1,
-		"FANS_COUNT":   2,
-		"POST_COUNT":   3,
-	}
-)
-
-func (x UpdateTypeUid) Enum() *UpdateTypeUid {
-	p := new(UpdateTypeUid)
-	*p = x
-	return p
-}
-
-func (x UpdateTypeUid) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (UpdateTypeUid) Descriptor() protoreflect.EnumDescriptor {
-	return file_pb_userCenter_proto_enumTypes[0].Descriptor()
-}
-
-func (UpdateTypeUid) Type() protoreflect.EnumType {
-	return &file_pb_userCenter_proto_enumTypes[0]
-}
-
-func (x UpdateTypeUid) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use UpdateTypeUid.Descriptor instead.
-func (UpdateTypeUid) EnumDescriptor() ([]byte, []int) {
-	return file_pb_userCenter_proto_rawDescGZIP(), []int{0}
-}
-
-type UpdateFrom int32
-
-const (
-	UpdateFrom_UserService           UpdateFrom = 0
-	UpdateFrom_ContentService        UpdateFrom = 1
-	UpdateFrom_InteractiveService    UpdateFrom = 2
-	UpdateFrom_NotifyService         UpdateFrom = 3
-	UpdateFrom_ReCmdAndSearchService UpdateFrom = 4
-)
-
-// Enum value maps for UpdateFrom.
-var (
-	UpdateFrom_name = map[int32]string{
-		0: "UserService",
-		1: "ContentService",
-		2: "InteractiveService",
-		3: "NotifyService",
-		4: "ReCmdAndSearchService",
-	}
-	UpdateFrom_value = map[string]int32{
-		"UserService":           0,
-		"ContentService":        1,
-		"InteractiveService":    2,
-		"NotifyService":         3,
-		"ReCmdAndSearchService": 4,
-	}
-)
-
-func (x UpdateFrom) Enum() *UpdateFrom {
-	p := new(UpdateFrom)
-	*p = x
-	return p
-}
-
-func (x UpdateFrom) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (UpdateFrom) Descriptor() protoreflect.EnumDescriptor {
-	return file_pb_userCenter_proto_enumTypes[1].Descriptor()
-}
-
-func (UpdateFrom) Type() protoreflect.EnumType {
-	return &file_pb_userCenter_proto_enumTypes[1]
-}
-
-func (x UpdateFrom) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use UpdateFrom.Descriptor instead.
-func (UpdateFrom) EnumDescriptor() ([]byte, []int) {
-	return file_pb_userCenter_proto_rawDescGZIP(), []int{1}
-}
-
 // ==================== 通用响应结构 ====================
 type JwtToken struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -389,8 +282,10 @@ func (x *RegisterReq) GetPassword() string {
 
 type RegisterResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserInfo      *UserInfo              `protobuf:"bytes,1,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
-	Token         *JwtToken              `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 注册后直接登录，返回token
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	UserInfo      *UserInfo              `protobuf:"bytes,3,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
+	Token         *JwtToken              `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"` // 注册后直接登录，返回token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -423,6 +318,20 @@ func (x *RegisterResp) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RegisterResp.ProtoReflect.Descriptor instead.
 func (*RegisterResp) Descriptor() ([]byte, []int) {
 	return file_pb_userCenter_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RegisterResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *RegisterResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
 }
 
 func (x *RegisterResp) GetUserInfo() *UserInfo {
@@ -493,8 +402,10 @@ func (x *LoginReq) GetPassword() string {
 
 type LoginResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserInfo      *UserInfo              `protobuf:"bytes,1,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
-	Token         *JwtToken              `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 登录成功返回token
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	UserInfo      *UserInfo              `protobuf:"bytes,3,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
+	Token         *JwtToken              `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"` // 登录成功返回token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -527,6 +438,20 @@ func (x *LoginResp) ProtoReflect() protoreflect.Message {
 // Deprecated: Use LoginResp.ProtoReflect.Descriptor instead.
 func (*LoginResp) Descriptor() ([]byte, []int) {
 	return file_pb_userCenter_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *LoginResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *LoginResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
 }
 
 func (x *LoginResp) GetUserInfo() *UserInfo {
@@ -590,7 +515,9 @@ func (x *GetUserInfoReq) GetUid() int64 {
 
 type GetUserInfoResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserInfo      *UserInfo              `protobuf:"bytes,1,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	UserInfo      *UserInfo              `protobuf:"bytes,3,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -625,6 +552,20 @@ func (*GetUserInfoResp) Descriptor() ([]byte, []int) {
 	return file_pb_userCenter_proto_rawDescGZIP(), []int{8}
 }
 
+func (x *GetUserInfoResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *GetUserInfoResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
 func (x *GetUserInfoResp) GetUserInfo() *UserInfo {
 	if x != nil {
 		return x.UserInfo
@@ -632,7 +573,7 @@ func (x *GetUserInfoResp) GetUserInfo() *UserInfo {
 	return nil
 }
 
-// ==========批量查询（给互动微服务返回评论区） ============
+// ==========批量查询（给其它微服务返回评论区） ============
 type BatchUserBriefReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Uids          []int64                `protobuf:"varint,1,rep,packed,name=uids,proto3" json:"uids,omitempty"`
@@ -679,7 +620,9 @@ func (x *BatchUserBriefReq) GetUids() []int64 {
 
 type BatchUserBriefResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Users         []*UserBrief           `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Users         []*UserBrief           `protobuf:"bytes,3,rep,name=users,proto3" json:"users,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -714,132 +657,25 @@ func (*BatchUserBriefResp) Descriptor() ([]byte, []int) {
 	return file_pb_userCenter_proto_rawDescGZIP(), []int{10}
 }
 
+func (x *BatchUserBriefResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *BatchUserBriefResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
 func (x *BatchUserBriefResp) GetUsers() []*UserBrief {
 	if x != nil {
 		return x.Users
 	}
 	return nil
-}
-
-// ==================== 统计更新 ====================
-type UpdateStatsUidReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uid           int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
-	UpdateTypeUid UpdateTypeUid          `protobuf:"varint,2,opt,name=update_type_uid,json=updateTypeUid,proto3,enum=pb.UpdateTypeUid" json:"update_type_uid,omitempty"`
-	Delta         int64                  `protobuf:"varint,3,opt,name=delta,proto3" json:"delta,omitempty"`
-	UpdateFrom    UpdateFrom             `protobuf:"varint,4,opt,name=update_from,json=updateFrom,proto3,enum=pb.UpdateFrom" json:"update_from,omitempty"`
-	UpdateTime    int64                  `protobuf:"varint,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateStatsUidReq) Reset() {
-	*x = UpdateStatsUidReq{}
-	mi := &file_pb_userCenter_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateStatsUidReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateStatsUidReq) ProtoMessage() {}
-
-func (x *UpdateStatsUidReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_userCenter_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateStatsUidReq.ProtoReflect.Descriptor instead.
-func (*UpdateStatsUidReq) Descriptor() ([]byte, []int) {
-	return file_pb_userCenter_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *UpdateStatsUidReq) GetUid() int64 {
-	if x != nil {
-		return x.Uid
-	}
-	return 0
-}
-
-func (x *UpdateStatsUidReq) GetUpdateTypeUid() UpdateTypeUid {
-	if x != nil {
-		return x.UpdateTypeUid
-	}
-	return UpdateTypeUid_UNKNOWN
-}
-
-func (x *UpdateStatsUidReq) GetDelta() int64 {
-	if x != nil {
-		return x.Delta
-	}
-	return 0
-}
-
-func (x *UpdateStatsUidReq) GetUpdateFrom() UpdateFrom {
-	if x != nil {
-		return x.UpdateFrom
-	}
-	return UpdateFrom_UserService
-}
-
-func (x *UpdateStatsUidReq) GetUpdateTime() int64 {
-	if x != nil {
-		return x.UpdateTime
-	}
-	return 0
-}
-
-type UpdateStatsUidResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateStatsUidResp) Reset() {
-	*x = UpdateStatsUidResp{}
-	mi := &file_pb_userCenter_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateStatsUidResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateStatsUidResp) ProtoMessage() {}
-
-func (x *UpdateStatsUidResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_userCenter_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateStatsUidResp.ProtoReflect.Descriptor instead.
-func (*UpdateStatsUidResp) Descriptor() ([]byte, []int) {
-	return file_pb_userCenter_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *UpdateStatsUidResp) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
 }
 
 var File_pb_userCenter_proto protoreflect.FileDescriptor
@@ -866,55 +702,38 @@ const file_pb_userCenter_proto_rawDesc = "" +
 	"\x06avatar\x18\x03 \x01(\tR\x06avatar\"A\n" +
 	"\vRegisterReq\x12\x16\n" +
 	"\x06mobile\x18\x01 \x01(\tR\x06mobile\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"]\n" +
-	"\fRegisterResp\x12)\n" +
-	"\tuser_info\x18\x01 \x01(\v2\f.pb.UserInfoR\buserInfo\x12\"\n" +
-	"\x05token\x18\x02 \x01(\v2\f.pb.JwtTokenR\x05token\">\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x83\x01\n" +
+	"\fRegisterResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
+	"\tuser_info\x18\x03 \x01(\v2\f.pb.UserInfoR\buserInfo\x12\"\n" +
+	"\x05token\x18\x04 \x01(\v2\f.pb.JwtTokenR\x05token\">\n" +
 	"\bLoginReq\x12\x16\n" +
 	"\x06mobile\x18\x01 \x01(\tR\x06mobile\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"Z\n" +
-	"\tLoginResp\x12)\n" +
-	"\tuser_info\x18\x01 \x01(\v2\f.pb.UserInfoR\buserInfo\x12\"\n" +
-	"\x05token\x18\x02 \x01(\v2\f.pb.JwtTokenR\x05token\"\"\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x80\x01\n" +
+	"\tLoginResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
+	"\tuser_info\x18\x03 \x01(\v2\f.pb.UserInfoR\buserInfo\x12\"\n" +
+	"\x05token\x18\x04 \x01(\v2\f.pb.JwtTokenR\x05token\"\"\n" +
 	"\x0eGetUserInfoReq\x12\x10\n" +
-	"\x03uid\x18\x01 \x01(\x03R\x03uid\"<\n" +
-	"\x0fGetUserInfoResp\x12)\n" +
-	"\tuser_info\x18\x01 \x01(\v2\f.pb.UserInfoR\buserInfo\"'\n" +
+	"\x03uid\x18\x01 \x01(\x03R\x03uid\"b\n" +
+	"\x0fGetUserInfoResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
+	"\tuser_info\x18\x03 \x01(\v2\f.pb.UserInfoR\buserInfo\"'\n" +
 	"\x11BatchUserBriefReq\x12\x12\n" +
-	"\x04uids\x18\x01 \x03(\x03R\x04uids\"9\n" +
-	"\x12BatchUserBriefResp\x12#\n" +
-	"\x05users\x18\x01 \x03(\v2\r.pb.UserBriefR\x05users\"\xc8\x01\n" +
-	"\x11UpdateStatsUidReq\x12\x10\n" +
-	"\x03uid\x18\x01 \x01(\x03R\x03uid\x129\n" +
-	"\x0fupdate_type_uid\x18\x02 \x01(\x0e2\x11.pb.UpdateTypeUidR\rupdateTypeUid\x12\x14\n" +
-	"\x05delta\x18\x03 \x01(\x03R\x05delta\x12/\n" +
-	"\vupdate_from\x18\x04 \x01(\x0e2\x0e.pb.UpdateFromR\n" +
-	"updateFrom\x12\x1f\n" +
-	"\vupdate_time\x18\x05 \x01(\x03R\n" +
-	"updateTime\".\n" +
-	"\x12UpdateStatsUidResp\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess*N\n" +
-	"\rUpdateTypeUid\x12\v\n" +
-	"\aUNKNOWN\x10\x00\x12\x10\n" +
-	"\fFOLLOW_COUNT\x10\x01\x12\x0e\n" +
-	"\n" +
-	"FANS_COUNT\x10\x02\x12\x0e\n" +
-	"\n" +
-	"POST_COUNT\x10\x03*w\n" +
-	"\n" +
-	"UpdateFrom\x12\x0f\n" +
-	"\vUserService\x10\x00\x12\x12\n" +
-	"\x0eContentService\x10\x01\x12\x16\n" +
-	"\x12InteractiveService\x10\x02\x12\x11\n" +
-	"\rNotifyService\x10\x03\x12\x19\n" +
-	"\x15ReCmdAndSearchService\x10\x042\x9e\x02\n" +
+	"\x04uids\x18\x01 \x03(\x03R\x04uids\"_\n" +
+	"\x12BatchUserBriefResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12#\n" +
+	"\x05users\x18\x03 \x03(\v2\r.pb.UserBriefR\x05users2\xdd\x01\n" +
 	"\n" +
 	"UserCenter\x12-\n" +
 	"\bRegister\x12\x0f.pb.RegisterReq\x1a\x10.pb.RegisterResp\x12$\n" +
 	"\x05Login\x12\f.pb.LoginReq\x1a\r.pb.LoginResp\x126\n" +
 	"\vGetUserInfo\x12\x12.pb.GetUserInfoReq\x1a\x13.pb.GetUserInfoResp\x12B\n" +
-	"\x11BatchGetUserBrief\x12\x15.pb.BatchUserBriefReq\x1a\x16.pb.BatchUserBriefResp\x12?\n" +
-	"\x0eUpdateStatsUid\x12\x15.pb.UpdateStatsUidReq\x1a\x16.pb.UpdateStatsUidRespB\x06Z\x04./pbb\x06proto3"
+	"\x11BatchGetUserBrief\x12\x15.pb.BatchUserBriefReq\x1a\x16.pb.BatchUserBriefRespB\x06Z\x04./pbb\x06proto3"
 
 var (
 	file_pb_userCenter_proto_rawDescOnce sync.Once
@@ -928,49 +747,40 @@ func file_pb_userCenter_proto_rawDescGZIP() []byte {
 	return file_pb_userCenter_proto_rawDescData
 }
 
-var file_pb_userCenter_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_pb_userCenter_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_pb_userCenter_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_pb_userCenter_proto_goTypes = []any{
-	(UpdateTypeUid)(0),         // 0: pb.UpdateTypeUid
-	(UpdateFrom)(0),            // 1: pb.UpdateFrom
-	(*JwtToken)(nil),           // 2: pb.JwtToken
-	(*UserInfo)(nil),           // 3: pb.UserInfo
-	(*UserBrief)(nil),          // 4: pb.UserBrief
-	(*RegisterReq)(nil),        // 5: pb.RegisterReq
-	(*RegisterResp)(nil),       // 6: pb.RegisterResp
-	(*LoginReq)(nil),           // 7: pb.LoginReq
-	(*LoginResp)(nil),          // 8: pb.LoginResp
-	(*GetUserInfoReq)(nil),     // 9: pb.GetUserInfoReq
-	(*GetUserInfoResp)(nil),    // 10: pb.GetUserInfoResp
-	(*BatchUserBriefReq)(nil),  // 11: pb.BatchUserBriefReq
-	(*BatchUserBriefResp)(nil), // 12: pb.BatchUserBriefResp
-	(*UpdateStatsUidReq)(nil),  // 13: pb.UpdateStatsUidReq
-	(*UpdateStatsUidResp)(nil), // 14: pb.UpdateStatsUidResp
+	(*JwtToken)(nil),           // 0: pb.JwtToken
+	(*UserInfo)(nil),           // 1: pb.UserInfo
+	(*UserBrief)(nil),          // 2: pb.UserBrief
+	(*RegisterReq)(nil),        // 3: pb.RegisterReq
+	(*RegisterResp)(nil),       // 4: pb.RegisterResp
+	(*LoginReq)(nil),           // 5: pb.LoginReq
+	(*LoginResp)(nil),          // 6: pb.LoginResp
+	(*GetUserInfoReq)(nil),     // 7: pb.GetUserInfoReq
+	(*GetUserInfoResp)(nil),    // 8: pb.GetUserInfoResp
+	(*BatchUserBriefReq)(nil),  // 9: pb.BatchUserBriefReq
+	(*BatchUserBriefResp)(nil), // 10: pb.BatchUserBriefResp
 }
 var file_pb_userCenter_proto_depIdxs = []int32{
-	3,  // 0: pb.RegisterResp.user_info:type_name -> pb.UserInfo
-	2,  // 1: pb.RegisterResp.token:type_name -> pb.JwtToken
-	3,  // 2: pb.LoginResp.user_info:type_name -> pb.UserInfo
-	2,  // 3: pb.LoginResp.token:type_name -> pb.JwtToken
-	3,  // 4: pb.GetUserInfoResp.user_info:type_name -> pb.UserInfo
-	4,  // 5: pb.BatchUserBriefResp.users:type_name -> pb.UserBrief
-	0,  // 6: pb.UpdateStatsUidReq.update_type_uid:type_name -> pb.UpdateTypeUid
-	1,  // 7: pb.UpdateStatsUidReq.update_from:type_name -> pb.UpdateFrom
-	5,  // 8: pb.UserCenter.Register:input_type -> pb.RegisterReq
-	7,  // 9: pb.UserCenter.Login:input_type -> pb.LoginReq
-	9,  // 10: pb.UserCenter.GetUserInfo:input_type -> pb.GetUserInfoReq
-	11, // 11: pb.UserCenter.BatchGetUserBrief:input_type -> pb.BatchUserBriefReq
-	13, // 12: pb.UserCenter.UpdateStatsUid:input_type -> pb.UpdateStatsUidReq
-	6,  // 13: pb.UserCenter.Register:output_type -> pb.RegisterResp
-	8,  // 14: pb.UserCenter.Login:output_type -> pb.LoginResp
-	10, // 15: pb.UserCenter.GetUserInfo:output_type -> pb.GetUserInfoResp
-	12, // 16: pb.UserCenter.BatchGetUserBrief:output_type -> pb.BatchUserBriefResp
-	14, // 17: pb.UserCenter.UpdateStatsUid:output_type -> pb.UpdateStatsUidResp
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	1,  // 0: pb.RegisterResp.user_info:type_name -> pb.UserInfo
+	0,  // 1: pb.RegisterResp.token:type_name -> pb.JwtToken
+	1,  // 2: pb.LoginResp.user_info:type_name -> pb.UserInfo
+	0,  // 3: pb.LoginResp.token:type_name -> pb.JwtToken
+	1,  // 4: pb.GetUserInfoResp.user_info:type_name -> pb.UserInfo
+	2,  // 5: pb.BatchUserBriefResp.users:type_name -> pb.UserBrief
+	3,  // 6: pb.UserCenter.Register:input_type -> pb.RegisterReq
+	5,  // 7: pb.UserCenter.Login:input_type -> pb.LoginReq
+	7,  // 8: pb.UserCenter.GetUserInfo:input_type -> pb.GetUserInfoReq
+	9,  // 9: pb.UserCenter.BatchGetUserBrief:input_type -> pb.BatchUserBriefReq
+	4,  // 10: pb.UserCenter.Register:output_type -> pb.RegisterResp
+	6,  // 11: pb.UserCenter.Login:output_type -> pb.LoginResp
+	8,  // 12: pb.UserCenter.GetUserInfo:output_type -> pb.GetUserInfoResp
+	10, // 13: pb.UserCenter.BatchGetUserBrief:output_type -> pb.BatchUserBriefResp
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_pb_userCenter_proto_init() }
@@ -983,14 +793,13 @@ func file_pb_userCenter_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_userCenter_proto_rawDesc), len(file_pb_userCenter_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   13,
+			NumEnums:      0,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_pb_userCenter_proto_goTypes,
 		DependencyIndexes: file_pb_userCenter_proto_depIdxs,
-		EnumInfos:         file_pb_userCenter_proto_enumTypes,
 		MessageInfos:      file_pb_userCenter_proto_msgTypes,
 	}.Build()
 	File_pb_userCenter_proto = out.File

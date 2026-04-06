@@ -14,35 +14,31 @@ import (
 )
 
 type (
-	BatchGetLikeStatusReq  = pb.BatchGetLikeStatusReq
-	BatchGetLikeStatusResp = pb.BatchGetLikeStatusResp
-	CommentInfo            = pb.CommentInfo
-	CreateCommentReq       = pb.CreateCommentReq
-	CreateCommentResp      = pb.CreateCommentResp
-	DeleteCommentReq       = pb.DeleteCommentReq
-	DeleteCommentResp      = pb.DeleteCommentResp
-	GetCommentsReq         = pb.GetCommentsReq
-	GetCommentsResp        = pb.GetCommentsResp
-	GetLikeStatusReq       = pb.GetLikeStatusReq
-	GetLikeStatusResp      = pb.GetLikeStatusResp
-	GetRepliesReq          = pb.GetRepliesReq
-	GetRepliesResp         = pb.GetRepliesResp
-	LikeInfo               = pb.LikeInfo
-	LikeReq                = pb.LikeReq
-	LikeResp               = pb.LikeResp
-	PageReq                = pb.PageReq
-	PageResp               = pb.PageResp
+	CommentInfo       = pb.CommentInfo
+	CreateCommentReq  = pb.CreateCommentReq
+	CreateCommentResp = pb.CreateCommentResp
+	DeleteCommentReq  = pb.DeleteCommentReq
+	DeleteCommentResp = pb.DeleteCommentResp
+	GetCommentsReq    = pb.GetCommentsReq
+	GetCommentsResp   = pb.GetCommentsResp
+	GetRepliesReq     = pb.GetRepliesReq
+	GetRepliesResp    = pb.GetRepliesResp
+	LikeCommentInfo   = pb.LikeCommentInfo
+	LikeCommentReq    = pb.LikeCommentReq
+	LikeCommentResp   = pb.LikeCommentResp
+	LikeTweetInfo     = pb.LikeTweetInfo
+	LikeTweetReq      = pb.LikeTweetReq
+	LikeTweetResp     = pb.LikeTweetResp
 
 	Interaction interface {
-		// 评论服务
+		// 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
 		CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error)
 		DeleteComment(ctx context.Context, in *DeleteCommentReq, opts ...grpc.CallOption) (*DeleteCommentResp, error)
 		GetComments(ctx context.Context, in *GetCommentsReq, opts ...grpc.CallOption) (*GetCommentsResp, error)
 		GetReplies(ctx context.Context, in *GetRepliesReq, opts ...grpc.CallOption) (*GetRepliesResp, error)
-		// 点赞服务
-		Like(ctx context.Context, in *LikeReq, opts ...grpc.CallOption) (*LikeResp, error)
-		GetLikeStatus(ctx context.Context, in *GetLikeStatusReq, opts ...grpc.CallOption) (*GetLikeStatusResp, error)
-		BatchGetLikeStatus(ctx context.Context, in *BatchGetLikeStatusReq, opts ...grpc.CallOption) (*BatchGetLikeStatusResp, error)
+		// 点赞/取消点赞行为
+		LikeTweet(ctx context.Context, in *LikeTweetReq, opts ...grpc.CallOption) (*LikeTweetResp, error)
+		LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error)
 	}
 
 	defaultInteraction struct {
@@ -56,7 +52,7 @@ func NewInteraction(cli zrpc.Client) Interaction {
 	}
 }
 
-// 评论服务
+// 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
 func (m *defaultInteraction) CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error) {
 	client := pb.NewInteractionClient(m.cli.Conn())
 	return client.CreateComment(ctx, in, opts...)
@@ -77,18 +73,13 @@ func (m *defaultInteraction) GetReplies(ctx context.Context, in *GetRepliesReq, 
 	return client.GetReplies(ctx, in, opts...)
 }
 
-// 点赞服务
-func (m *defaultInteraction) Like(ctx context.Context, in *LikeReq, opts ...grpc.CallOption) (*LikeResp, error) {
+// 点赞/取消点赞行为
+func (m *defaultInteraction) LikeTweet(ctx context.Context, in *LikeTweetReq, opts ...grpc.CallOption) (*LikeTweetResp, error) {
 	client := pb.NewInteractionClient(m.cli.Conn())
-	return client.Like(ctx, in, opts...)
+	return client.LikeTweet(ctx, in, opts...)
 }
 
-func (m *defaultInteraction) GetLikeStatus(ctx context.Context, in *GetLikeStatusReq, opts ...grpc.CallOption) (*GetLikeStatusResp, error) {
+func (m *defaultInteraction) LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error) {
 	client := pb.NewInteractionClient(m.cli.Conn())
-	return client.GetLikeStatus(ctx, in, opts...)
-}
-
-func (m *defaultInteraction) BatchGetLikeStatus(ctx context.Context, in *BatchGetLikeStatusReq, opts ...grpc.CallOption) (*BatchGetLikeStatusResp, error) {
-	client := pb.NewInteractionClient(m.cli.Conn())
-	return client.BatchGetLikeStatus(ctx, in, opts...)
+	return client.LikeComment(ctx, in, opts...)
 }

@@ -19,5 +19,12 @@ type Config struct {
 		KeyPrefix string `json:",optional"`
 	}
 
-	Cache cache.CacheConf // ✅ 必须有这个
+	Cache cache.CacheConf
+
+	// 或者分开定义
+	Kafka struct {
+		Addrs  []string
+		Group  string
+		Topics []string
+	} `json:",optional"`
 }

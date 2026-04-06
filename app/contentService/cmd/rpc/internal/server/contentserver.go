@@ -52,9 +52,3 @@ func (s *ContentServer) DeleteTweet(ctx context.Context, in *pb.DeleteTweetReq) 
 	l := logic.NewDeleteTweetLogic(ctx, s.svcCtx)
 	return l.DeleteTweet(in)
 }
-
-// 6. 更新统计数（供互动微服务调用）
-func (s *ContentServer) UpdateStatsTid(ctx context.Context, in *pb.UpdateStatsTidReq) (*pb.UpdateStatsTidResp, error) {
-	l := logic.NewUpdateStatsTidLogic(ctx, s.svcCtx)
-	return l.UpdateStatsTid(in)
-}

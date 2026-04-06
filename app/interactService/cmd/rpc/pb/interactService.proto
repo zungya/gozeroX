@@ -4,142 +4,148 @@ package pb;
 
 option go_package = "./pb";
 
-// ==================== 基础消息 ====================
-
-message PageReq {
-  int64 page = 1;
-  int64 pageSize = 2;
-}
-
-message PageResp {
-  int64 total = 1;
-  int64 page = 2;
-  int64 pageSize = 3;
-}
-
 // ==================== 评论相关 ====================
 
 // 评论基础信息
 message CommentInfo {
-  int64 cid = 1;
-  int64 tid = 2;
-  int64 uid = 3;
-  int64 parentId = 4;
-  int64 rootId = 5;
-  string content = 6;
+  int64 snow_cid = 1;       // 评论ID，使用雪花算法生成的字符串，保证全局唯一且有序，方便分页查询
+  int64 snow_tid = 2;       // 评论所属推文ID
+  int64 uid = 3;            // 评论用户ID
+  int64 parentId = 4;       // 0表示顶级评论，否则为回复对象的snow_cid
+  int64 rootId = 5;         // 顶级评论ID，方便查询一个评论树下的所有评论。顶级评论的rootId等于自己的snow_cid，回复评论的rootId等于它所在的顶级评论的snow_cid。
+  string content = 6;       // 评论内容
   int64 likeCount = 7;      // 点赞总数
   int64 replyCount = 8;     // 回复总数
-  int32 status = 9;         // 0-正常 1-删除 2-审核中
-  string createTime = 10;
+  int64 createTime = 10;    // 评论创建时间，使用时间戳格式，单位为毫秒，方便排序和分页查询
+
+  // 以下字段不存储在数据库中，而是通过关联查询获取的额外信息
+  string nickname = 11;     // 评论用户昵称
+  string avatar = 12;       // 评论用户头像
+  int64  isLiked = 13;       // 当前请求用户是否点赞了这条评论
 }
 
 // 创建评论
 message CreateCommentReq {
-  int64 tid = 1;
+  int64 snow_tid = 1;
   int64 uid = 2;
   string content = 3;
-  int64 parentId = 4;       // 0表示顶级评论
+  int64 parentId = 4;       // 0表示顶级评论,否则为回复对象的snow_cid。
+  int64 rootId = 5;         // 顶级评论ID，如果parentId!=0,说明是回复评论，那么这个rootId应该已经是为它所在的顶级评论的snow_cid，否则就是0（没用的）,需要后端生成雪花id后替换。
+  // 业务逻辑：如果parentId=0，说明是顶级评论，那么rootId也应该设置为0；如果parentId不为0，说明是回复评论，那么需要查询parentId对应的评论记录，获取它的rootId，并将这个rootId设置到新评论的rootId字段中。这样就能保证同一评论树下的所有评论都有相同的rootId，方便后续查询整个评论树。
 }
 
 message CreateCommentResp {
-  CommentInfo comment = 1;
+  int64 code = 1;
+  string msg = 2;
+  CommentInfo comment = 3;
 }
 
 // 删除评论
 message DeleteCommentReq {
-  int64 cid = 1;
-  int64 uid = 2;            // 操作用户ID，用于权限校验
+  string snow_cid = 1;
+  int64 uid = 2;    // 删除评论的用户ID，后端需要校验这个用户是否有权限删除这条评论（只能删除自己的评论或者管理员可以删除任何评论）
 }
 
 message DeleteCommentResp {
-  bool success = 1;         // 是否删除成功
-  int64 cid = 2;            // 被删除的评论ID
+  int64 code = 1;
+  string msg = 2;
+  bool success = 3;
+  // 业务逻辑：删除评论其实是一个软删除操作，即将评论记录的status字段设置为1，表示已删除。这样做的好处是可以保留评论数据，方便后续分析和恢复。同时，在查询评论列表时，只返回status=0的评论，忽略已删除的评论。注意查询数量时，应该统计status=0的评论数量，作为total返回给前端，这样前端才能正确判断是否还有更多评论需要加载。
 }
 
 // 获取评论列表
 message GetCommentsReq {
-  int64 tid = 1;
-  int64 page = 2;
-  int64 pageSize = 3;
-  string sort = 4;          // hot-热门 new-最新
+  int64 snow_tid = 1;
+  int64 cusor = 2;        // 上次请求最后一条评论的createtime或者是likecount或者是综合加权对应的值，第一次请求可以不传或者传0，后端根据这个cursor进行分页查询，返回下一页的评论列表
+  int64 limit = 3;        // 需要评论数量，前端可以根据需要传入不同的值，后端根据这个limit进行分页查询，返回对应数量的评论列表
+  int64 uid = 4;          // 当前请求用户ID，用于判断哪些评论被当前用户点赞了
+  int64 sort = 5;         // 0-按综合排序加权（likeCount和createTime加权）(要点赞多又稍微偏新的)，1-按createTime倒序排序（最新的）
+
+  // 业务逻辑：获取评论列表时，后端需要根据tid查询对应的评论记录，并且只返回status=0的评论（即未删除的评论）。同时，根据sort参数决定排序方式，如果sort=0，则按createTime倒序排序；如果sort=1，则按likeCount倒序排序。分页查询时，可以使用cursor和limit参数来控制返回的评论数量和分页位置。最后，后端还需要根据uid参数判断哪些评论被当前用户点赞了，并在返回的CommentInfo中设置isLiked字段。
 }
 
 message GetCommentsResp {
-  repeated CommentInfo comments = 1;
-  int64 total = 2;
+  int64 code = 1;     // 0表示成功，其他值表示失败
+  string msg = 2;     // 业务逻辑：code=0表示查询成功，前端可以根据这个code值来判断是否需要显示评论列表或者显示错误提示。如果code不为0，说明查询失败了，前端可以根据msg字段显示具体的错误信息。
+  repeated CommentInfo comments = 3;  //只返回comment.status=0的评论，即未删除的评论，如果某条评论被删除了，那么它的status=1，后端在查询时会过滤掉这些评论，不返回给前端。这样前端就不需要处理被删除评论的显示问题了。
+  int64 total = 4;    // 这次查询的评论总数，前端可以根据这个total值来判断是否还有下一页评论需要加载，如果total=0，说明没有更多评论了，可以停止加载更多。
 }
 
 // 获取评论回复列表
 message GetRepliesReq {
-  int64 cid = 1;            // 父评论ID
-  int64 page = 2;
-  int64 pageSize = 3;
+  int64 root_cid = 1;            // 根评论区的snow_cid,前端在获取某条评论的回复评论区时，需要传入这个root_cid，后端根据这个root_cid查询对应的回复评论列表。注意：这个root_cid应该是一个顶级评论的snow_cid，因为只有顶级评论才会有回复评论，回复评论的rootId字段应该等于它所在的顶级评论的snow_cid。
+  int64 cusor = 2;              // 上次请求最后一条评论的createtime对应的值，第一次请求可以不传或者传0
+  int64 limit = 3;              // 需要评论数量，前端可以根据需要传入不同的值，后端根据这个limit进行分页查询，返回对应数量的评论列表
+  int64 uid = 4;                // 当前请求用户ID，用于判断哪些评论被当前用户点赞了
+  //这里就只需要按照createTime正序排序了，不需要提供sort参数了，让早回复的在前排。符合习惯。
 }
 
 message GetRepliesResp {
-  repeated CommentInfo replies = 1;
-  int64 total = 2;
+  int64 code = 1;     // 0表示成功，其他值表示失败
+  string msg = 2;
+  repeated CommentInfo replies = 3;   //只返回comment.status=0的评论
+  int64 total = 4;   //这次查询总数
 }
 
 // ==================== 点赞相关 ====================
 
-// 点赞记录信息（内部使用）
-message LikeInfo {
-  int64 likesId = 1;
+// 点赞记录信息（不需要校验）
+message LikeTweetInfo {
+  int64 snow_likes_id = 1;
   int64 uid = 2;
-  int32 targetType = 3;     // 1-内容 2-评论
-  int64 targetId = 4;
-  int32 status = 5;         // 1-点赞 0-取消
-  string createTime = 6;
-  string updateTime = 7;
+  int64 snow_tid = 3;
+  int64 status = 4;   // 1-点赞 0-取消
+  int64 updateTime = 5; 
+}
+
+message LikeCommentInfo {
+  int64 snow_likes_id = 1;
+  int64 uid = 2;
+  int64 snow_cid = 3;
+  int64 status = 4;   // 1-点赞 0-取消
+  int64 updateTime = 5;
 }
 
 // 点赞/取消点赞
-message LikeReq {
-  int64 uid = 1;
-  int32 targetType = 2;
-  int64 targetId = 3;
-  int32 action = 4;         // 1-点赞 0-取消
+message LikeTweetReq {
+  int64 is_created = 1;       //是否是第一次操作（第一次操作需要创建记录，后续操作为更新状态),0为第一次操作，1为非第一次操作
+  int64 snow_likes_id = 2;   //如果is_created==0，那么这个值从api发来的时候应该是空的，没用。如果==1，那么这个值应该是之前创建的点赞记录ID，直接更新状态覆盖原记录。
+  int64 uid = 3;
+  int64 snow_tid = 4;
+  int64 status = 5;           // 1-点赞 0-取消
+  string updateTime = 6;     // 点赞/取消操作时间，格式为RFC3339，例如：2024-06-01T12:00:00Z
 }
 
-message LikeResp {
-  bool isLiked = 1;         // 当前是否点赞（操作后的状态）
+message LikeCommentReq {
+  int64 is_created = 1;       //是否是第一次操作（第一次操作需要创建记录，后续操作为更新状态),0为第一次操作，1为非第一次操作
+  int64 snow_likes_id = 2;   //如果is_created==0，那么这个值从api发来的时候应该是空的，没用。如果==1，那么这个值应该是之前创建的点赞记录ID，直接更新状态覆盖原记录。
+  int64 uid = 3;
+  int64 snow_cid = 4;
+  int64 status = 5;           // 1-点赞 0-取消
+  string updateTime = 6;     // 点赞/取消操作时间，格式为RFC3339，例如：2024-06-01T12:00:00Z
 }
 
-// 获取单个点赞状态
-message GetLikeStatusReq {
-  int64 uid = 1;
-  int32 targetType = 2;
-  int64 targetId = 3;
-}
 
-message GetLikeStatusResp {
-  bool isLiked = 1;         // 只返回是否点赞，likeCount从资源本身获取
+message LikeTweetResp {
+  int64 code = 1;
+  string msg = 2;
+  LikeTweetInfo like = 3;         // 当前是否点赞（操作后的状态）
 }
-
-// 批量获取点赞状态
-message BatchGetLikeStatusReq {
-  int64 uid = 1;
-  int32 targetType = 2;
-  repeated int64 targetIds = 3;
+message LikeCommentResp {
+  int64 code = 1;
+  string msg = 2;
+  LikeCommentInfo like = 3;         // 当前是否点赞（操作后的状态）
 }
-
-message BatchGetLikeStatusResp {
-  map<int64, bool> isLiked = 1;  // targetId -> isLiked
-}
-
 // ==================== RPC Service ====================
 
 service Interaction {
-  // 评论服务
+  // 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
   rpc CreateComment(CreateCommentReq) returns (CreateCommentResp);
   rpc DeleteComment(DeleteCommentReq) returns (DeleteCommentResp);
   rpc GetComments(GetCommentsReq) returns (GetCommentsResp);
   rpc GetReplies(GetRepliesReq) returns (GetRepliesResp);
 
-  // 点赞服务
-  rpc Like(LikeReq) returns (LikeResp);
-  rpc GetLikeStatus(GetLikeStatusReq) returns (GetLikeStatusResp);
-  rpc BatchGetLikeStatus(BatchGetLikeStatusReq) returns (BatchGetLikeStatusResp);
-
+  // 点赞/取消点赞行为
+  rpc LikeTweet(LikeTweetReq) returns (LikeTweetResp);
+  rpc LikeComment(LikeCommentReq) returns (LikeCommentResp);
 }

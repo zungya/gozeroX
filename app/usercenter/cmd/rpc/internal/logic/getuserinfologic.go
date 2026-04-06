@@ -2,7 +2,9 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"gozeroX/app/usercenter/model"
+	"strconv"
 
 	"gozeroX/app/usercenter/cmd/rpc/internal/svc"
 	"gozeroX/app/usercenter/cmd/rpc/pb"
@@ -26,27 +28,90 @@ func NewGetUserInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetUs
 
 // GetUserInfo 获取用户信息
 func (l *GetUserInfoLogic) GetUserInfo(in *pb.GetUserInfoReq) (*pb.GetUserInfoResp, error) {
-	// todo: add your logic here and delete this line
-	// ✅ 1. 从缓存获取 - 模块名"user"，ID为uid
-	var cachedUser model.User
-	err := l.svcCtx.CacheManager.Get(l.ctx, "user", "info", in.Uid, &cachedUser)
-	if err == nil {
-		logx.Infof("缓存命中: user:%d", in.Uid)
+	// 1. 先从缓存获取
+	cachedUser, err := l.svcCtx.CacheManager.HGetAll(l.ctx, "user", "info", in.Uid)
+	if err == nil && len(cachedUser) > 0 {
+		l.Infof("缓存命中: uid=%d", in.Uid)
+
+		// 从缓存构建用户信息
+		userInfo := &pb.UserInfo{
+			Uid:      in.Uid,
+			Nickname: cachedUser["nickname"],
+			Avatar:   cachedUser["avatar"],
+			Bio:      cachedUser["bio"],
+		}
+
+		// 转换数字字段
+		if followCount, err := strconv.ParseInt(cachedUser["follow_count"], 10, 64); err == nil {
+			userInfo.FollowCount = followCount
+		}
+		if fansCount, err := strconv.ParseInt(cachedUser["fans_count"], 10, 64); err == nil {
+			userInfo.FansCount = fansCount
+		}
+		if postCount, err := strconv.ParseInt(cachedUser["post_count"], 10, 64); err == nil {
+			userInfo.PostCount = postCount
+		}
+
+		// 检查用户状态
+		status, _ := strconv.ParseInt(cachedUser["status"], 10, 64)
+		if status == 0 {
+			return &pb.GetUserInfoResp{
+				Code: 1,
+				Msg:  "用户已被禁用",
+			}, nil
+		}
+
 		return &pb.GetUserInfoResp{
-			UserInfo: l.svcCtx.BuildUserInfo(&cachedUser),
+			Code:     0,
+			Msg:      "success",
+			UserInfo: userInfo,
 		}, nil
 	}
 
-	// 2. 查数据库
+	// 2. 缓存未命中，查数据库
+	l.Infof("缓存未命中: uid=%d", in.Uid)
 	user, err := l.svcCtx.UserModel.FindOne(l.ctx, in.Uid)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, model.ErrNotFound) {
+			return &pb.GetUserInfoResp{
+				Code: 1,
+				Msg:  "用户不存在",
+			}, nil
+		}
+		return &pb.GetUserInfoResp{
+			Code: 1,
+			Msg:  "数据库查询失败",
+		}, nil
 	}
 
-	// ✅ 3. 存入缓存 - 模块名"user"，过期1小时
-	_ = l.svcCtx.CacheManager.Set(l.ctx, "user", "info", in.Uid, user, 3600)
+	// 检查用户状态
+	if user.Status == 0 {
+		return &pb.GetUserInfoResp{
+			Code: 1,
+			Msg:  "用户已被禁用",
+		}, nil
+	}
 
+	userHash := map[string]interface{}{
+		"nickname":     user.Nickname,
+		"avatar":       user.Avatar,
+		"bio":          user.Bio,
+		"status":       user.Status,
+		"follow_count": user.FollowCount,
+		"fans_count":   user.FansCount,
+		"post_count":   user.PostCount,
+	}
+
+	// 3. 异步写入缓存（避免阻塞）
+	go func() {
+		_ = l.svcCtx.CacheManager.HSetAll(context.Background(), "user", "info", user.Uid, userHash)
+		_ = l.svcCtx.CacheManager.Expire(context.Background(), "user", "info", user.Uid, 3600)
+	}()
+
+	// 4. 返回成功结果
 	return &pb.GetUserInfoResp{
+		Code:     0,
+		Msg:      "success",
 		UserInfo: l.svcCtx.BuildUserInfo(user),
 	}, nil
 }

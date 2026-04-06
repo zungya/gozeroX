@@ -24,13 +24,15 @@ var (
 	commentRowsExpectAutoSet   = strings.Join(stringx.Remove(commentFieldNames, "cid", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"), ",")
 	commentRowsWithPlaceHolder = builder.PostgreSqlJoin(stringx.Remove(commentFieldNames, "cid", "create_at", "create_time", "created_at", "update_at", "update_time", "updated_at"))
 
-	cachePublicCommentCidPrefix = "cache:public:comment:cid:"
+	cachePublicCommentCidPrefix     = "cache:public:comment:cid:"
+	cachePublicCommentSnowCidPrefix = "cache:public:comment:snowCid:"
 )
 
 type (
 	commentModel interface {
 		Insert(ctx context.Context, data *Comment) (sql.Result, error)
 		FindOne(ctx context.Context, cid int64) (*Comment, error)
+		FindOneBySnowCid(ctx context.Context, snowCid int64) (*Comment, error)
 		Update(ctx context.Context, data *Comment) error
 		Delete(ctx context.Context, cid int64) error
 	}
@@ -41,7 +43,7 @@ type (
 	}
 
 	Comment struct {
-		Cid        int64     `db:"cid"`         // 评论ID，自增主键
+		Cid        int64     `db:"cid"`         // 评论ID，没用
 		Tid        int64     `db:"tid"`         // 推文ID，关联tweet表
 		Uid        int64     `db:"uid"`         // 评论用户ID，关联user表
 		ParentId   int64     `db:"parent_id"`   // 父评论ID（0表示顶级评论）
@@ -51,6 +53,7 @@ type (
 		ReplyCount int64     `db:"reply_count"` // 回复数
 		Status     int64     `db:"status"`      // 状态：0-正常，1-删除（软删），2-审核中
 		CreateTime time.Time `db:"create_time"` // 创建时间（带时区）
+		SnowCid    int64     `db:"snow_cid"`    // 雪花ID业务主键（前端后端交互主要使用）
 	}
 )
 
@@ -62,11 +65,17 @@ func newCommentModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option)
 }
 
 func (m *defaultCommentModel) Delete(ctx context.Context, cid int64) error {
+	data, err := m.FindOne(ctx, cid)
+	if err != nil {
+		return err
+	}
+
 	publicCommentCidKey := fmt.Sprintf("%s%v", cachePublicCommentCidPrefix, cid)
-	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, data.SnowCid)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("delete from %s where cid = $1", m.table)
 		return conn.ExecCtx(ctx, query, cid)
-	}, publicCommentCidKey)
+	}, publicCommentCidKey, publicCommentSnowCidKey)
 	return err
 }
 
@@ -87,21 +96,48 @@ func (m *defaultCommentModel) FindOne(ctx context.Context, cid int64) (*Comment,
 	}
 }
 
+func (m *defaultCommentModel) FindOneBySnowCid(ctx context.Context, snowCid int64) (*Comment, error) {
+	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, snowCid)
+	var resp Comment
+	err := m.QueryRowIndexCtx(ctx, &resp, publicCommentSnowCidKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where snow_cid = $1 limit 1", commentRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, snowCid); err != nil {
+			return nil, err
+		}
+		return resp.Cid, nil
+	}, m.queryPrimary)
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlc.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
 func (m *defaultCommentModel) Insert(ctx context.Context, data *Comment) (sql.Result, error) {
 	publicCommentCidKey := fmt.Sprintf("%s%v", cachePublicCommentCidPrefix, data.Cid)
+	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, data.SnowCid)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8)", m.table, commentRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.Tid, data.Uid, data.ParentId, data.RootId, data.Content, data.LikeCount, data.ReplyCount, data.Status)
-	}, publicCommentCidKey)
+		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)", m.table, commentRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Tid, data.Uid, data.ParentId, data.RootId, data.Content, data.LikeCount, data.ReplyCount, data.Status, data.SnowCid)
+	}, publicCommentCidKey, publicCommentSnowCidKey)
 	return ret, err
 }
 
-func (m *defaultCommentModel) Update(ctx context.Context, data *Comment) error {
+func (m *defaultCommentModel) Update(ctx context.Context, newData *Comment) error {
+	data, err := m.FindOne(ctx, newData.Cid)
+	if err != nil {
+		return err
+	}
+
 	publicCommentCidKey := fmt.Sprintf("%s%v", cachePublicCommentCidPrefix, data.Cid)
-	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, data.SnowCid)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where cid = $1", m.table, commentRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.Cid, data.Tid, data.Uid, data.ParentId, data.RootId, data.Content, data.LikeCount, data.ReplyCount, data.Status)
-	}, publicCommentCidKey)
+		return conn.ExecCtx(ctx, query, newData.Cid, newData.Tid, newData.Uid, newData.ParentId, newData.RootId, newData.Content, newData.LikeCount, newData.ReplyCount, newData.Status, newData.SnowCid)
+	}, publicCommentCidKey, publicCommentSnowCidKey)
 	return err
 }
 

@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
 	"github.com/zeromicro/go-zero/core/stores/cache"
@@ -35,7 +34,6 @@ type (
 		FindOne(ctx context.Context, uid int64) (*User, error)
 		FindOneByMobile(ctx context.Context, mobile string) (*User, error)
 		FindOneByNickname(ctx context.Context, nickname string) (*User, error)
-
 		Update(ctx context.Context, data *User) error
 		Delete(ctx context.Context, uid int64) error
 	}
@@ -46,19 +44,19 @@ type (
 	}
 
 	User struct {
-		Uid         int64        `db:"uid"`           // 用户ID，自增主键
-		Mobile      string       `db:"mobile"`        // 手机号（登录账号）
-		Password    string       `db:"password"`      // 加密后的密码
-		Nickname    string       `db:"nickname"`      // 用户昵称（唯一）
-		Avatar      string       `db:"avatar"`        // 头像URL
-		Bio         string       `db:"bio"`           // 个人简介
-		FollowCount int64        `db:"follow_count"`  // 关注数
-		FansCount   int64        `db:"fans_count"`    // 粉丝数
-		PostCount   int64        `db:"post_count"`    // 发帖/动态数
-		Status      int64        `db:"status"`        // 账号状态：1正常，0禁用
-		CreatedAt   time.Time    `db:"created_at"`    // 创建时间
-		UpdatedAt   time.Time    `db:"updated_at"`    // 更新时间（触发器自动更新）
-		LastLoginAt sql.NullTime `db:"last_login_at"` // 最后登录时间
+		Uid         int64  `db:"uid"`           // 用户ID，自增主键
+		Mobile      string `db:"mobile"`        // 手机号（登录账号）
+		Password    string `db:"password"`      // 加密后的密码
+		Nickname    string `db:"nickname"`      // 用户昵称（初始值为uid，唯一）
+		Avatar      string `db:"avatar"`        // 头像URL
+		Bio         string `db:"bio"`           // 个人简介
+		FollowCount int64  `db:"follow_count"`  // 关注数
+		FansCount   int64  `db:"fans_count"`    // 粉丝数
+		PostCount   int64  `db:"post_count"`    // 发帖/动态数
+		Status      int64  `db:"status"`        // 账号状态：1正常，0禁用
+		LastLoginAt int64  `db:"last_login_at"` // 最后登录时间（毫秒级时间戳）
+		CreatedAt   int64  `db:"created_at"`    // 创建时间（毫秒级时间戳）
+		UpdatedAt   int64  `db:"updated_at"`    // 更新时间（毫秒级时间戳）
 	}
 )
 

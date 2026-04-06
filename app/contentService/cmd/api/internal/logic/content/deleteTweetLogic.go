@@ -52,7 +52,7 @@ func (l *DeleteTweetLogic) DeleteTweet(req *types.DeleteTweetReq) (resp *types.D
 		Uid: req.Uid,
 	})
 	if err != nil {
-		logx.Errorf("DeleteTweet RPC error: %v", err)
+		logx.Errorf("DeleteTweet RPC errorx: %v", err)
 		return nil, err
 	}
 

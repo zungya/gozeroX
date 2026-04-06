@@ -2,9 +2,9 @@ package logic
 
 import (
 	"context"
-	"fmt"
 	"github.com/lib/pq"
 	"gozeroX/app/contentService/model"
+	"gozeroX/pkg/idgen"
 	"time"
 
 	"gozeroX/app/contentService/cmd/rpc/internal/svc"
@@ -27,72 +27,68 @@ func NewCreateTweetLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Creat
 	}
 }
 
-// CreateTweet 4. 创建推文（供API调用）
 func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetResp, error) {
-	// todo: add your logic here and delete this line
-	// 1. 参数校验
-	if err := l.validateParams(in); err != nil {
+
+	// 2. 生成雪花ID作为业务主键
+	snowTid, err := idgen.GenID()
+	if err != nil {
+		logx.Errorf("CreateTweet generate snowflake id errorx: %v", err)
 		return &pb.CreateTweetResp{
-			Code: 400,
-			Msg:  err.Error(),
+			Code: 500,
+			Msg:  "生成推文ID失败",
 		}, nil
 	}
 
-	// 2. 构建推文对象
+	// 3. 构建推文对象（使用新的表结构）
+	now := time.Now().UnixMilli() // 毫秒时间戳
 	tweet := &model.Tweet{
+		SnowTid:      snowTid, // 雪花ID作为业务主键
 		Uid:          in.Uid,
 		Content:      in.Content,
 		MediaUrls:    pq.StringArray(in.MediaUrls),
 		Tags:         pq.StringArray(in.Tags),
 		IsPublic:     in.IsPublic,
-		CreatedAt:    time.Now(),
-		IsDeleted:    false,
 		LikeCount:    0,
 		CommentCount: 0,
+		Status:       0, // 0-正常
+		CreatedAt:    now,
 	}
 
-	// 3. 插入数据库
+	// 4. 插入数据库（tid 是自增的，数据库会自动生成）
 	result, err := l.svcCtx.TweetModel.Insert(l.ctx, tweet)
 	if err != nil {
-		logx.Errorf("Insert tweet error: %v", err)
-		return nil, err
+		logx.Errorf("Insert tweet errorx: %v", err)
+		return &pb.CreateTweetResp{
+			Code: 500,
+			Msg:  "发布推文失败",
+		}, nil
 	}
 
-	// 4. 获取自增ID
+	// 5. 获取自增ID（可选，如果需要可以获取）
 	tid, err := result.LastInsertId()
 	if err != nil {
-		logx.Errorf("Get last insert id error: %v", err)
-		return nil, err
+		logx.Errorf("Get last insert id errorx: %v", err)
+		// 即使获取失败也不影响业务，只是记录日志
+	} else {
+		tweet.Tid = tid
 	}
-	tweet.Tid = tid
 
-	// ✅ 5. 存入缓存 - 模块名"tweet"，过期1小时（完全模仿user风格）
-	_ = l.svcCtx.CacheManager.Set(l.ctx, "tweet", "info", tid, tweet, 3600)
+	// 6. 存入Redis缓存（使用snowTid作为key）
+	if err := l.svcCtx.SetTweetToCache(l.ctx, snowTid, tweet); err != nil {
+		logx.Errorf("CreateTweet SetTweetToCache errorx, snowTid:%d, err:%v", snowTid, err)
+	}
 
-	// 6. 返回结果
+	// 7. 异步更新用户推文数
+	go func() {
+		if err := l.svcCtx.IncrUserTweetCount(context.Background()); err != nil {
+			logx.Errorf("IncrUserTweetCount errorx, uid:%d, err:%v", in.Uid, err)
+		}
+	}()
+
+	// 8. 返回结果
 	return &pb.CreateTweetResp{
 		Code:  0,
 		Msg:   "success",
-		Tweet: l.svcCtx.BuildTweet(tweet), // 使用 svcCtx 的 Build 方法
+		Tweet: l.svcCtx.BuildTweet(tweet),
 	}, nil
-}
-
-// 参数校验
-func (l *CreateTweetLogic) validateParams(in *pb.CreateTweetReq) error {
-	if in.Uid == 0 {
-		return fmt.Errorf("用户ID不能为空")
-	}
-	if len(in.Content) == 0 {
-		return fmt.Errorf("推文内容不能为空")
-	}
-	if len(in.Content) > 1000 {
-		return fmt.Errorf("推文内容不能超过1000字")
-	}
-	if len(in.MediaUrls) > 9 {
-		return fmt.Errorf("最多只能上传9张图片")
-	}
-	if len(in.Tags) > 10 {
-		return fmt.Errorf("最多只能添加10个标签")
-	}
-	return nil
 }

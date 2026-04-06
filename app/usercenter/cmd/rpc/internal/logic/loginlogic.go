@@ -28,101 +28,91 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 
 // Login 用户登录（返回user_info + token）
 func (l *LoginLogic) Login(in *pb.LoginReq) (*pb.LoginResp, error) {
-	// 1. 先从手机号缓存拿 uid
-	var cachedUid struct{ Uid int64 }
-	err := l.svcCtx.CacheManager.Get(l.ctx, "user", "mobile", in.Mobile, &cachedUid)
-	if err == nil {
-		// 2. 再从 uid 缓存拿完整用户信息
-		var cachedUser model.User
-		err = l.svcCtx.CacheManager.Get(l.ctx, "user", "info", cachedUid.Uid, &cachedUser)
-		if err == nil {
-			l.Infof("缓存命中: mobile=%s, uid=%d", in.Mobile, cachedUser.Uid)
-
-			// 验证密码
-			err = bcrypt.CompareHashAndPassword([]byte(cachedUser.Password), []byte(in.Password))
-			if err != nil {
-				return nil, errors.New("密码错误")
-			}
-
-			// 检查账号状态
-			if cachedUser.Status == 0 {
-				return nil, errors.New("账号已被禁用")
-			}
-
-			// 更新最后登录时间（异步，不影响响应）
-			go func() {
-				_ = l.svcCtx.UserModel.UpdateLastLogin(context.Background(), cachedUser.Uid)
-				// 只删 user 缓存，不删 mobile 缓存（因为 mobile 只存 uid）
-				_ = l.svcCtx.CacheManager.Del(context.Background(), "user", "info", cachedUser.Uid)
-			}()
-
-			// 生成 token
-			token, expire, err := l.svcCtx.GenerateJwtToken(cachedUser.Uid)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.LoginResp{
-				UserInfo: l.svcCtx.BuildUserInfo(&cachedUser),
-				Token: &pb.JwtToken{
-					AccessToken:  token,
-					AccessExpire: expire,
-				},
-			}, nil
-		}
-	}
-
-	// 3. 缓存未命中，查数据库
-	l.Infof("缓存未命中: mobile=%s", in.Mobile)
+	// 1. 直接查数据库
 	user, err := l.svcCtx.UserModel.FindOneByMobile(l.ctx, in.Mobile)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
-			return nil, errors.New("手机号未注册")
+			return &pb.LoginResp{
+				Code: 1,
+				Msg:  "手机号未注册",
+			}, nil
 		}
-		return nil, err
+		return &pb.LoginResp{
+			Code: 1,
+			Msg:  "数据库查询失败",
+		}, nil
 	}
 
-	// 4. 验证密码
+	// 2. 验证密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(in.Password))
 	if err != nil {
-		return nil, errors.New("密码错误")
+		return &pb.LoginResp{
+			Code: 1,
+			Msg:  "密码错误",
+		}, nil
 	}
 
-	// 5. 检查账号状态
+	// 3. 检查账号状态
 	if user.Status == 0 {
-		return nil, errors.New("账号已被禁用")
+		return &pb.LoginResp{
+			Code: 1,
+			Msg:  "账号已被禁用",
+		}, nil
 	}
 
-	// 6. 更新最后登录时间
-	err = l.svcCtx.UserModel.UpdateLastLogin(l.ctx, user.Uid)
-	if err != nil {
-		logx.Errorf("更新登录时间失败 uid: %d, err: %v", user.Uid, err)
-	}
+	// 4. 更新最后登录时间（异步，不影响响应）
+	go func() {
+		_ = l.svcCtx.UserModel.UpdateLastLogin(context.Background(), user.Uid)
+	}()
 
-	// 7. 重新查询最新数据（包含更新后的 last_login_at）
-	user, err = l.svcCtx.UserModel.FindOne(l.ctx, user.Uid)
-	if err != nil {
-		return nil, err
-	}
+	// 5. 写入缓存（只存非敏感信息，用于其他地方读取）
+	l.setUserCache(user)
 
-	// 8. 写入缓存（分离存储）
-	// 8.1 按 uid 缓存完整用户信息
-	_ = l.svcCtx.CacheManager.Set(l.ctx, "user", "info", user.Uid, user, 3600)
-	// 8.2 按手机号只存 uid
-	_ = l.svcCtx.CacheManager.Set(l.ctx, "user", "mobile", in.Mobile, struct{ Uid int64 }{Uid: user.Uid}, 3600)
-
-	// 9. 生成 JWT token
+	// 6. 生成 JWT token
 	token, expire, err := l.svcCtx.GenerateJwtToken(user.Uid)
 	if err != nil {
-		return nil, err
+		return &pb.LoginResp{
+			Code: 1,
+			Msg:  "生成token失败",
+		}, nil
 	}
 
-	// 10. 返回登录响应
+	// 7. 返回登录响应
 	return &pb.LoginResp{
+		Code:     0,
+		Msg:      "success",
 		UserInfo: l.svcCtx.BuildUserInfo(user),
 		Token: &pb.JwtToken{
 			AccessToken:  token,
 			AccessExpire: expire,
 		},
 	}, nil
+}
+
+// setUserCache 设置用户缓存（使用 Hash）
+func (l *LoginLogic) setUserCache(user *model.User) {
+	ctx := context.Background()
+
+	// 使用 Hash 存储用户非敏感信息
+	userHash := map[string]interface{}{
+		"nickname":     user.Nickname,
+		"avatar":       user.Avatar,
+		"bio":          user.Bio,
+		"status":       user.Status,
+		"follow_count": user.FollowCount,
+		"fans_count":   user.FansCount,
+		"post_count":   user.PostCount,
+	}
+
+	// 设置用户信息 Hash（过期时间 1 小时）
+	err := l.svcCtx.CacheManager.HSetAll(ctx, "user", "info", user.Uid, userHash)
+	if err != nil {
+		logx.Errorf("设置用户缓存失败 uid: %d, err: %v", user.Uid, err)
+	}
+
+	// 设置 Hash 过期时间
+	err = l.svcCtx.CacheManager.Expire(ctx, "user", "info", user.Uid, 3600)
+	if err != nil {
+		logx.Errorf("设置缓存过期时间失败 uid: %d, err: %v", user.Uid, err)
+	}
 }

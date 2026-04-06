@@ -23,7 +23,7 @@ func NewInteractionServer(svcCtx *svc.ServiceContext) *InteractionServer {
 	}
 }
 
-// 评论服务
+// 评论服务（创建、删除评论，获取推文顶级评论区、获取某条评论的回复评论区）
 func (s *InteractionServer) CreateComment(ctx context.Context, in *pb.CreateCommentReq) (*pb.CreateCommentResp, error) {
 	l := logic.NewCreateCommentLogic(ctx, s.svcCtx)
 	return l.CreateComment(in)
@@ -44,18 +44,13 @@ func (s *InteractionServer) GetReplies(ctx context.Context, in *pb.GetRepliesReq
 	return l.GetReplies(in)
 }
 
-// 点赞服务
-func (s *InteractionServer) Like(ctx context.Context, in *pb.LikeReq) (*pb.LikeResp, error) {
-	l := logic.NewLikeLogic(ctx, s.svcCtx)
-	return l.Like(in)
+// 点赞/取消点赞行为
+func (s *InteractionServer) LikeTweet(ctx context.Context, in *pb.LikeTweetReq) (*pb.LikeTweetResp, error) {
+	l := logic.NewLikeTweetLogic(ctx, s.svcCtx)
+	return l.LikeTweet(in)
 }
 
-func (s *InteractionServer) GetLikeStatus(ctx context.Context, in *pb.GetLikeStatusReq) (*pb.GetLikeStatusResp, error) {
-	l := logic.NewGetLikeStatusLogic(ctx, s.svcCtx)
-	return l.GetLikeStatus(in)
-}
-
-func (s *InteractionServer) BatchGetLikeStatus(ctx context.Context, in *pb.BatchGetLikeStatusReq) (*pb.BatchGetLikeStatusResp, error) {
-	l := logic.NewBatchGetLikeStatusLogic(ctx, s.svcCtx)
-	return l.BatchGetLikeStatus(in)
+func (s *InteractionServer) LikeComment(ctx context.Context, in *pb.LikeCommentReq) (*pb.LikeCommentResp, error) {
+	l := logic.NewLikeCommentLogic(ctx, s.svcCtx)
+	return l.LikeComment(in)
 }

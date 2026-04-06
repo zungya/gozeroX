@@ -44,7 +44,7 @@ func (l *ListTweetsLogic) ListTweets(req *types.ListTweetsUidReq) (resp *types.L
 		Sort:     l.convertSort(req.Sort),
 	})
 	if err != nil {
-		logx.Errorf("ListTweetsUid RPC error: %v", err)
+		logx.Errorf("ListTweetsUid RPC errorx: %v", err)
 		return nil, err
 	}
 

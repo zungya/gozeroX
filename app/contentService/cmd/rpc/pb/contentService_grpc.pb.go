@@ -24,7 +24,6 @@ const (
 	Content_BatchGetTweets_FullMethodName = "/pb.Content/BatchGetTweets"
 	Content_CreateTweet_FullMethodName    = "/pb.Content/CreateTweet"
 	Content_DeleteTweet_FullMethodName    = "/pb.Content/DeleteTweet"
-	Content_UpdateStatsTid_FullMethodName = "/pb.Content/UpdateStatsTid"
 )
 
 // ContentClient is the client API for Content service.
@@ -43,8 +42,6 @@ type ContentClient interface {
 	CreateTweet(ctx context.Context, in *CreateTweetReq, opts ...grpc.CallOption) (*CreateTweetResp, error)
 	// 5. 删除推文（供API调用）
 	DeleteTweet(ctx context.Context, in *DeleteTweetReq, opts ...grpc.CallOption) (*DeleteTweetResp, error)
-	// 6. 更新统计数（供互动微服务调用）
-	UpdateStatsTid(ctx context.Context, in *UpdateStatsTidReq, opts ...grpc.CallOption) (*UpdateStatsTidResp, error)
 }
 
 type contentClient struct {
@@ -105,16 +102,6 @@ func (c *contentClient) DeleteTweet(ctx context.Context, in *DeleteTweetReq, opt
 	return out, nil
 }
 
-func (c *contentClient) UpdateStatsTid(ctx context.Context, in *UpdateStatsTidReq, opts ...grpc.CallOption) (*UpdateStatsTidResp, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateStatsTidResp)
-	err := c.cc.Invoke(ctx, Content_UpdateStatsTid_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ContentServer is the server API for Content service.
 // All implementations must embed UnimplementedContentServer
 // for forward compatibility.
@@ -131,8 +118,6 @@ type ContentServer interface {
 	CreateTweet(context.Context, *CreateTweetReq) (*CreateTweetResp, error)
 	// 5. 删除推文（供API调用）
 	DeleteTweet(context.Context, *DeleteTweetReq) (*DeleteTweetResp, error)
-	// 6. 更新统计数（供互动微服务调用）
-	UpdateStatsTid(context.Context, *UpdateStatsTidReq) (*UpdateStatsTidResp, error)
 	mustEmbedUnimplementedContentServer()
 }
 
@@ -157,9 +142,6 @@ func (UnimplementedContentServer) CreateTweet(context.Context, *CreateTweetReq) 
 }
 func (UnimplementedContentServer) DeleteTweet(context.Context, *DeleteTweetReq) (*DeleteTweetResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTweet not implemented")
-}
-func (UnimplementedContentServer) UpdateStatsTid(context.Context, *UpdateStatsTidReq) (*UpdateStatsTidResp, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpdateStatsTid not implemented")
 }
 func (UnimplementedContentServer) mustEmbedUnimplementedContentServer() {}
 func (UnimplementedContentServer) testEmbeddedByValue()                 {}
@@ -272,24 +254,6 @@ func _Content_DeleteTweet_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Content_UpdateStatsTid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateStatsTidReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContentServer).UpdateStatsTid(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Content_UpdateStatsTid_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContentServer).UpdateStatsTid(ctx, req.(*UpdateStatsTidReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Content_ServiceDesc is the grpc.ServiceDesc for Content service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -316,10 +280,6 @@ var Content_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTweet",
 			Handler:    _Content_DeleteTweet_Handler,
-		},
-		{
-			MethodName: "UpdateStatsTid",
-			Handler:    _Content_UpdateStatsTid_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

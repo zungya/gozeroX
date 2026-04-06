@@ -21,169 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SortType int32
-
-const (
-	SortType_CREATED_AT_DESC SortType = 0 // 对应 API 层 "created_at_desc"
-	SortType_CREATED_AT_ASC  SortType = 1 // 对应 API 层 "created_at_asc"
-)
-
-// Enum value maps for SortType.
-var (
-	SortType_name = map[int32]string{
-		0: "CREATED_AT_DESC",
-		1: "CREATED_AT_ASC",
-	}
-	SortType_value = map[string]int32{
-		"CREATED_AT_DESC": 0,
-		"CREATED_AT_ASC":  1,
-	}
-)
-
-func (x SortType) Enum() *SortType {
-	p := new(SortType)
-	*p = x
-	return p
-}
-
-func (x SortType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (SortType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pb_contentService_proto_enumTypes[0].Descriptor()
-}
-
-func (SortType) Type() protoreflect.EnumType {
-	return &file_pb_contentService_proto_enumTypes[0]
-}
-
-func (x SortType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use SortType.Descriptor instead.
-func (SortType) EnumDescriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{0}
-}
-
-type UpdateTypeTid int32
-
-const (
-	UpdateTypeTid_UNKNOWN       UpdateTypeTid = 0
-	UpdateTypeTid_Like_COUNT    UpdateTypeTid = 1
-	UpdateTypeTid_Comment_COUNT UpdateTypeTid = 2
-)
-
-// Enum value maps for UpdateTypeTid.
-var (
-	UpdateTypeTid_name = map[int32]string{
-		0: "UNKNOWN",
-		1: "Like_COUNT",
-		2: "Comment_COUNT",
-	}
-	UpdateTypeTid_value = map[string]int32{
-		"UNKNOWN":       0,
-		"Like_COUNT":    1,
-		"Comment_COUNT": 2,
-	}
-)
-
-func (x UpdateTypeTid) Enum() *UpdateTypeTid {
-	p := new(UpdateTypeTid)
-	*p = x
-	return p
-}
-
-func (x UpdateTypeTid) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (UpdateTypeTid) Descriptor() protoreflect.EnumDescriptor {
-	return file_pb_contentService_proto_enumTypes[1].Descriptor()
-}
-
-func (UpdateTypeTid) Type() protoreflect.EnumType {
-	return &file_pb_contentService_proto_enumTypes[1]
-}
-
-func (x UpdateTypeTid) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use UpdateTypeTid.Descriptor instead.
-func (UpdateTypeTid) EnumDescriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{1}
-}
-
-type UpdateFrom int32
-
-const (
-	UpdateFrom_UserService           UpdateFrom = 0
-	UpdateFrom_ContentService        UpdateFrom = 1
-	UpdateFrom_InteractiveService    UpdateFrom = 2
-	UpdateFrom_NotifyService         UpdateFrom = 3
-	UpdateFrom_ReCmdAndSearchService UpdateFrom = 4
-)
-
-// Enum value maps for UpdateFrom.
-var (
-	UpdateFrom_name = map[int32]string{
-		0: "UserService",
-		1: "ContentService",
-		2: "InteractiveService",
-		3: "NotifyService",
-		4: "ReCmdAndSearchService",
-	}
-	UpdateFrom_value = map[string]int32{
-		"UserService":           0,
-		"ContentService":        1,
-		"InteractiveService":    2,
-		"NotifyService":         3,
-		"ReCmdAndSearchService": 4,
-	}
-)
-
-func (x UpdateFrom) Enum() *UpdateFrom {
-	p := new(UpdateFrom)
-	*p = x
-	return p
-}
-
-func (x UpdateFrom) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (UpdateFrom) Descriptor() protoreflect.EnumDescriptor {
-	return file_pb_contentService_proto_enumTypes[2].Descriptor()
-}
-
-func (UpdateFrom) Type() protoreflect.EnumType {
-	return &file_pb_contentService_proto_enumTypes[2]
-}
-
-func (x UpdateFrom) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use UpdateFrom.Descriptor instead.
-func (UpdateFrom) EnumDescriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{2}
-}
-
 // ========== 基础结构体 ==========
 type Tweet struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tid           int64                  `protobuf:"varint,1,opt,name=tid,proto3" json:"tid,omitempty"`                                        // 推文ID
-	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`                                        // 发布用户ID
-	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`                                 // 推文内容
-	MediaUrls     []string               `protobuf:"bytes,4,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`            // 图片链接
-	Tags          []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`                                       // 标签
-	IsPublic      bool                   `protobuf:"varint,6,opt,name=is_public,json=isPublic,proto3" json:"is_public,omitempty"`              // 是否公开
-	CreatedAt     int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`           // 创建时间
-	IsDeleted     bool                   `protobuf:"varint,8,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`           // 是否删除
-	LikeCount     int64                  `protobuf:"varint,9,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`           // 点赞数
-	CommentCount  int64                  `protobuf:"varint,10,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"` // 评论数
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	SnowTid      int64                  `protobuf:"varint,1,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`                // 推文ID
+	Uid          int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`                                       // 发布用户ID
+	Content      string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`                                // 推文内容
+	MediaUrls    []string               `protobuf:"bytes,4,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`           // 图片链接
+	Tags         []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`                                      // 标签
+	IsPublic     bool                   `protobuf:"varint,6,opt,name=is_public,json=isPublic,proto3" json:"is_public,omitempty"`             // 是否公开
+	CreatedAt    int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`          // 创建时间
+	LikeCount    int64                  `protobuf:"varint,8,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`          // 点赞数
+	CommentCount int64                  `protobuf:"varint,9,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"` // 评论数
+	Status       int64                  `protobuf:"varint,10,opt,name=status,proto3" json:"status,omitempty"`                                // 推文状态，0正常，1已删除
+	// 以下字段不存储在数据库中，而是通过关联查询获取的额外信息
+	Nickname      string `protobuf:"bytes,11,opt,name=nickname,proto3" json:"nickname,omitempty"` // 发布用户昵称
+	Avatar        string `protobuf:"bytes,12,opt,name=avatar,proto3" json:"avatar,omitempty"`     // 发布用户头像
+	IsLiked       int64  `protobuf:"varint,13,opt,name=isLiked,proto3" json:"isLiked,omitempty"`  // 当前请求用户是否点赞了这条推文
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -218,9 +72,9 @@ func (*Tweet) Descriptor() ([]byte, []int) {
 	return file_pb_contentService_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Tweet) GetTid() int64 {
+func (x *Tweet) GetSnowTid() int64 {
 	if x != nil {
-		return x.Tid
+		return x.SnowTid
 	}
 	return 0
 }
@@ -267,13 +121,6 @@ func (x *Tweet) GetCreatedAt() int64 {
 	return 0
 }
 
-func (x *Tweet) GetIsDeleted() bool {
-	if x != nil {
-		return x.IsDeleted
-	}
-	return false
-}
-
 func (x *Tweet) GetLikeCount() int64 {
 	if x != nil {
 		return x.LikeCount
@@ -288,14 +135,42 @@ func (x *Tweet) GetCommentCount() int64 {
 	return 0
 }
 
+func (x *Tweet) GetStatus() int64 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *Tweet) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *Tweet) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+func (x *Tweet) GetIsLiked() int64 {
+	if x != nil {
+		return x.IsLiked
+	}
+	return 0
+}
+
 // ========== 用户主页推文列表查询 ==========
 type ListTweetsUidReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QueryUid      int64                  `protobuf:"varint,1,opt,name=query_uid,json=queryUid,proto3" json:"query_uid,omitempty"` // 要查询的用户ID（主页所属用户）
 	IsPublic      bool                   `protobuf:"varint,2,opt,name=is_public,json=isPublic,proto3" json:"is_public,omitempty"` // 是否也要查询不公开的
-	Page          int64                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`                         // 页码
-	Size          int64                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`                         // 每页条数
-	Sort          SortType               `protobuf:"varint,5,opt,name=sort,proto3,enum=pb.SortType" json:"sort,omitempty"`        // 排序
+	Cursor        int64                  `protobuf:"varint,3,opt,name=cursor,proto3" json:"cursor,omitempty"`                     // 上次请求最后一条推文的created_at，第一次请求可以不传或者传0，后端根据这个cursor进行分页查询，返回下一页的推文列表
+	Limit         int64                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`                       // 每页条数
+	Sort          int64                  `protobuf:"varint,5,opt,name=sort,proto3" json:"sort,omitempty"`                         // 排序,0是desc，1是asc，默认0
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -344,25 +219,25 @@ func (x *ListTweetsUidReq) GetIsPublic() bool {
 	return false
 }
 
-func (x *ListTweetsUidReq) GetPage() int64 {
+func (x *ListTweetsUidReq) GetCursor() int64 {
 	if x != nil {
-		return x.Page
+		return x.Cursor
 	}
 	return 0
 }
 
-func (x *ListTweetsUidReq) GetSize() int64 {
+func (x *ListTweetsUidReq) GetLimit() int64 {
 	if x != nil {
-		return x.Size
+		return x.Limit
 	}
 	return 0
 }
 
-func (x *ListTweetsUidReq) GetSort() SortType {
+func (x *ListTweetsUidReq) GetSort() int64 {
 	if x != nil {
 		return x.Sort
 	}
-	return SortType_CREATED_AT_DESC
+	return 0
 }
 
 // 响应：和之前一致
@@ -370,8 +245,8 @@ type ListTweetsUidResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
 	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
-	Tweets        []*Tweet               `protobuf:"bytes,3,rep,name=tweets,proto3" json:"tweets,omitempty"`         // 过滤后的推文列表
-	Pagination    *Pagination            `protobuf:"bytes,4,opt,name=pagination,proto3" json:"pagination,omitempty"` // 分页信息
+	Tweets        []*Tweet               `protobuf:"bytes,3,rep,name=tweets,proto3" json:"tweets,omitempty"` // 过滤后的推文列表
+	Total         int64                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`  // 过滤后的推文总数，供前端判断是否还有下一页
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -427,67 +302,7 @@ func (x *ListTweetsUidResp) GetTweets() []*Tweet {
 	return nil
 }
 
-func (x *ListTweetsUidResp) GetPagination() *Pagination {
-	if x != nil {
-		return x.Pagination
-	}
-	return nil
-}
-
-type Pagination struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          int64                  `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
-	Size          int64                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
-	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Pagination) Reset() {
-	*x = Pagination{}
-	mi := &file_pb_contentService_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Pagination) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Pagination) ProtoMessage() {}
-
-func (x *Pagination) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Pagination.ProtoReflect.Descriptor instead.
-func (*Pagination) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *Pagination) GetPage() int64 {
-	if x != nil {
-		return x.Page
-	}
-	return 0
-}
-
-func (x *Pagination) GetSize() int64 {
-	if x != nil {
-		return x.Size
-	}
-	return 0
-}
-
-func (x *Pagination) GetTotal() int64 {
+func (x *ListTweetsUidResp) GetTotal() int64 {
 	if x != nil {
 		return x.Total
 	}
@@ -504,7 +319,7 @@ type GetTweetByTidReq struct {
 
 func (x *GetTweetByTidReq) Reset() {
 	*x = GetTweetByTidReq{}
-	mi := &file_pb_contentService_proto_msgTypes[4]
+	mi := &file_pb_contentService_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +331,7 @@ func (x *GetTweetByTidReq) String() string {
 func (*GetTweetByTidReq) ProtoMessage() {}
 
 func (x *GetTweetByTidReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[4]
+	mi := &file_pb_contentService_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +344,7 @@ func (x *GetTweetByTidReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTweetByTidReq.ProtoReflect.Descriptor instead.
 func (*GetTweetByTidReq) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{4}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetTweetByTidReq) GetTid() int64 {
@@ -550,7 +365,7 @@ type GetTweetByTidResp struct {
 
 func (x *GetTweetByTidResp) Reset() {
 	*x = GetTweetByTidResp{}
-	mi := &file_pb_contentService_proto_msgTypes[5]
+	mi := &file_pb_contentService_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -562,7 +377,7 @@ func (x *GetTweetByTidResp) String() string {
 func (*GetTweetByTidResp) ProtoMessage() {}
 
 func (x *GetTweetByTidResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[5]
+	mi := &file_pb_contentService_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -575,7 +390,7 @@ func (x *GetTweetByTidResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTweetByTidResp.ProtoReflect.Descriptor instead.
 func (*GetTweetByTidResp) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{5}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetTweetByTidResp) GetCode() int64 {
@@ -609,7 +424,7 @@ type BatchGetTweetsReq struct {
 
 func (x *BatchGetTweetsReq) Reset() {
 	*x = BatchGetTweetsReq{}
-	mi := &file_pb_contentService_proto_msgTypes[6]
+	mi := &file_pb_contentService_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -621,7 +436,7 @@ func (x *BatchGetTweetsReq) String() string {
 func (*BatchGetTweetsReq) ProtoMessage() {}
 
 func (x *BatchGetTweetsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[6]
+	mi := &file_pb_contentService_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +449,7 @@ func (x *BatchGetTweetsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetTweetsReq.ProtoReflect.Descriptor instead.
 func (*BatchGetTweetsReq) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{6}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *BatchGetTweetsReq) GetTids() []int64 {
@@ -648,14 +463,14 @@ type BatchGetTweetsResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
 	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
-	Tweets        []*Tweet               `protobuf:"bytes,3,rep,name=tweets,proto3" json:"tweets,omitempty"` // 仅返回公开推文
+	Tweets        []*Tweet               `protobuf:"bytes,3,rep,name=tweets,proto3" json:"tweets,omitempty"` // 返回推文
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BatchGetTweetsResp) Reset() {
 	*x = BatchGetTweetsResp{}
-	mi := &file_pb_contentService_proto_msgTypes[7]
+	mi := &file_pb_contentService_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -667,7 +482,7 @@ func (x *BatchGetTweetsResp) String() string {
 func (*BatchGetTweetsResp) ProtoMessage() {}
 
 func (x *BatchGetTweetsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[7]
+	mi := &file_pb_contentService_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -680,7 +495,7 @@ func (x *BatchGetTweetsResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetTweetsResp.ProtoReflect.Descriptor instead.
 func (*BatchGetTweetsResp) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{7}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *BatchGetTweetsResp) GetCode() int64 {
@@ -718,7 +533,7 @@ type CreateTweetReq struct {
 
 func (x *CreateTweetReq) Reset() {
 	*x = CreateTweetReq{}
-	mi := &file_pb_contentService_proto_msgTypes[8]
+	mi := &file_pb_contentService_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -730,7 +545,7 @@ func (x *CreateTweetReq) String() string {
 func (*CreateTweetReq) ProtoMessage() {}
 
 func (x *CreateTweetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[8]
+	mi := &file_pb_contentService_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -743,7 +558,7 @@ func (x *CreateTweetReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTweetReq.ProtoReflect.Descriptor instead.
 func (*CreateTweetReq) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{8}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateTweetReq) GetUid() int64 {
@@ -792,7 +607,7 @@ type CreateTweetResp struct {
 
 func (x *CreateTweetResp) Reset() {
 	*x = CreateTweetResp{}
-	mi := &file_pb_contentService_proto_msgTypes[9]
+	mi := &file_pb_contentService_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +619,7 @@ func (x *CreateTweetResp) String() string {
 func (*CreateTweetResp) ProtoMessage() {}
 
 func (x *CreateTweetResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[9]
+	mi := &file_pb_contentService_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +632,7 @@ func (x *CreateTweetResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTweetResp.ProtoReflect.Descriptor instead.
 func (*CreateTweetResp) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{9}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateTweetResp) GetCode() int64 {
@@ -852,7 +667,7 @@ type DeleteTweetReq struct {
 
 func (x *DeleteTweetReq) Reset() {
 	*x = DeleteTweetReq{}
-	mi := &file_pb_contentService_proto_msgTypes[10]
+	mi := &file_pb_contentService_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -864,7 +679,7 @@ func (x *DeleteTweetReq) String() string {
 func (*DeleteTweetReq) ProtoMessage() {}
 
 func (x *DeleteTweetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[10]
+	mi := &file_pb_contentService_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -877,7 +692,7 @@ func (x *DeleteTweetReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTweetReq.ProtoReflect.Descriptor instead.
 func (*DeleteTweetReq) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{10}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteTweetReq) GetTid() int64 {
@@ -904,7 +719,7 @@ type DeleteTweetResp struct {
 
 func (x *DeleteTweetResp) Reset() {
 	*x = DeleteTweetResp{}
-	mi := &file_pb_contentService_proto_msgTypes[11]
+	mi := &file_pb_contentService_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -916,7 +731,7 @@ func (x *DeleteTweetResp) String() string {
 func (*DeleteTweetResp) ProtoMessage() {}
 
 func (x *DeleteTweetResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[11]
+	mi := &file_pb_contentService_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -929,7 +744,7 @@ func (x *DeleteTweetResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTweetResp.ProtoReflect.Descriptor instead.
 func (*DeleteTweetResp) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{11}
+	return file_pb_contentService_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteTweetResp) GetCode() int64 {
@@ -946,134 +761,13 @@ func (x *DeleteTweetResp) GetMsg() string {
 	return ""
 }
 
-// ==================== 统计更新 ====================
-type UpdateStatsTidReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tid           int64                  `protobuf:"varint,1,opt,name=tid,proto3" json:"tid,omitempty"`
-	UpdateTypeTid UpdateTypeTid          `protobuf:"varint,2,opt,name=update_type_tid,json=updateTypeTid,proto3,enum=pb.UpdateTypeTid" json:"update_type_tid,omitempty"`
-	Delta         int64                  `protobuf:"varint,3,opt,name=delta,proto3" json:"delta,omitempty"`
-	UpdateFrom    UpdateFrom             `protobuf:"varint,4,opt,name=update_from,json=updateFrom,proto3,enum=pb.UpdateFrom" json:"update_from,omitempty"`
-	UpdateTime    int64                  `protobuf:"varint,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateStatsTidReq) Reset() {
-	*x = UpdateStatsTidReq{}
-	mi := &file_pb_contentService_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateStatsTidReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateStatsTidReq) ProtoMessage() {}
-
-func (x *UpdateStatsTidReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateStatsTidReq.ProtoReflect.Descriptor instead.
-func (*UpdateStatsTidReq) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *UpdateStatsTidReq) GetTid() int64 {
-	if x != nil {
-		return x.Tid
-	}
-	return 0
-}
-
-func (x *UpdateStatsTidReq) GetUpdateTypeTid() UpdateTypeTid {
-	if x != nil {
-		return x.UpdateTypeTid
-	}
-	return UpdateTypeTid_UNKNOWN
-}
-
-func (x *UpdateStatsTidReq) GetDelta() int64 {
-	if x != nil {
-		return x.Delta
-	}
-	return 0
-}
-
-func (x *UpdateStatsTidReq) GetUpdateFrom() UpdateFrom {
-	if x != nil {
-		return x.UpdateFrom
-	}
-	return UpdateFrom_UserService
-}
-
-func (x *UpdateStatsTidReq) GetUpdateTime() int64 {
-	if x != nil {
-		return x.UpdateTime
-	}
-	return 0
-}
-
-type UpdateStatsTidResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateStatsTidResp) Reset() {
-	*x = UpdateStatsTidResp{}
-	mi := &file_pb_contentService_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateStatsTidResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateStatsTidResp) ProtoMessage() {}
-
-func (x *UpdateStatsTidResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_contentService_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateStatsTidResp.ProtoReflect.Descriptor instead.
-func (*UpdateStatsTidResp) Descriptor() ([]byte, []int) {
-	return file_pb_contentService_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *UpdateStatsTidResp) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
 var File_pb_contentService_proto protoreflect.FileDescriptor
 
 const file_pb_contentService_proto_rawDesc = "" +
 	"\n" +
-	"\x17pb/contentService.proto\x12\x02pb\"\x97\x02\n" +
-	"\x05Tweet\x12\x10\n" +
-	"\x03tid\x18\x01 \x01(\x03R\x03tid\x12\x10\n" +
+	"\x17pb/contentService.proto\x12\x02pb\"\xe7\x02\n" +
+	"\x05Tweet\x12\x19\n" +
+	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x12\x1d\n" +
 	"\n" +
@@ -1083,29 +777,24 @@ const file_pb_contentService_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"is_deleted\x18\b \x01(\bR\tisDeleted\x12\x1d\n" +
-	"\n" +
-	"like_count\x18\t \x01(\x03R\tlikeCount\x12#\n" +
-	"\rcomment_count\x18\n" +
-	" \x01(\x03R\fcommentCount\"\x96\x01\n" +
+	"like_count\x18\b \x01(\x03R\tlikeCount\x12#\n" +
+	"\rcomment_count\x18\t \x01(\x03R\fcommentCount\x12\x16\n" +
+	"\x06status\x18\n" +
+	" \x01(\x03R\x06status\x12\x1a\n" +
+	"\bnickname\x18\v \x01(\tR\bnickname\x12\x16\n" +
+	"\x06avatar\x18\f \x01(\tR\x06avatar\x12\x18\n" +
+	"\aisLiked\x18\r \x01(\x03R\aisLiked\"\x8e\x01\n" +
 	"\x10ListTweetsUidReq\x12\x1b\n" +
 	"\tquery_uid\x18\x01 \x01(\x03R\bqueryUid\x12\x1b\n" +
-	"\tis_public\x18\x02 \x01(\bR\bisPublic\x12\x12\n" +
-	"\x04page\x18\x03 \x01(\x03R\x04page\x12\x12\n" +
-	"\x04size\x18\x04 \x01(\x03R\x04size\x12 \n" +
-	"\x04sort\x18\x05 \x01(\x0e2\f.pb.SortTypeR\x04sort\"\x8c\x01\n" +
+	"\tis_public\x18\x02 \x01(\bR\bisPublic\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\x03R\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12\x12\n" +
+	"\x04sort\x18\x05 \x01(\x03R\x04sort\"r\n" +
 	"\x11ListTweetsUidResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x12!\n" +
-	"\x06tweets\x18\x03 \x03(\v2\t.pb.TweetR\x06tweets\x12.\n" +
-	"\n" +
-	"pagination\x18\x04 \x01(\v2\x0e.pb.PaginationR\n" +
-	"pagination\"J\n" +
-	"\n" +
-	"Pagination\x12\x12\n" +
-	"\x04page\x18\x01 \x01(\x03R\x04page\x12\x12\n" +
-	"\x04size\x18\x02 \x01(\x03R\x04size\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x03R\x05total\"$\n" +
+	"\x06tweets\x18\x03 \x03(\v2\t.pb.TweetR\x06tweets\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x03R\x05total\"$\n" +
 	"\x10GetTweetByTidReq\x12\x10\n" +
 	"\x03tid\x18\x01 \x01(\x03R\x03tid\"Z\n" +
 	"\x11GetTweetByTidResp\x12\x12\n" +
@@ -1134,39 +823,13 @@ const file_pb_contentService_proto_rawDesc = "" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\"7\n" +
 	"\x0fDeleteTweetResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msg\"\xc8\x01\n" +
-	"\x11UpdateStatsTidReq\x12\x10\n" +
-	"\x03tid\x18\x01 \x01(\x03R\x03tid\x129\n" +
-	"\x0fupdate_type_tid\x18\x02 \x01(\x0e2\x11.pb.UpdateTypeTidR\rupdateTypeTid\x12\x14\n" +
-	"\x05delta\x18\x03 \x01(\x03R\x05delta\x12/\n" +
-	"\vupdate_from\x18\x04 \x01(\x0e2\x0e.pb.UpdateFromR\n" +
-	"updateFrom\x12\x1f\n" +
-	"\vupdate_time\x18\x05 \x01(\x03R\n" +
-	"updateTime\".\n" +
-	"\x12UpdateStatsTidResp\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess*3\n" +
-	"\bSortType\x12\x13\n" +
-	"\x0fCREATED_AT_DESC\x10\x00\x12\x12\n" +
-	"\x0eCREATED_AT_ASC\x10\x01*?\n" +
-	"\rUpdateTypeTid\x12\v\n" +
-	"\aUNKNOWN\x10\x00\x12\x0e\n" +
-	"\n" +
-	"Like_COUNT\x10\x01\x12\x11\n" +
-	"\rComment_COUNT\x10\x02*w\n" +
-	"\n" +
-	"UpdateFrom\x12\x0f\n" +
-	"\vUserService\x10\x00\x12\x12\n" +
-	"\x0eContentService\x10\x01\x12\x16\n" +
-	"\x12InteractiveService\x10\x02\x12\x11\n" +
-	"\rNotifyService\x10\x03\x12\x19\n" +
-	"\x15ReCmdAndSearchService\x10\x042\xf7\x02\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg2\xb6\x02\n" +
 	"\aContent\x12<\n" +
 	"\rListTweetsUid\x12\x14.pb.ListTweetsUidReq\x1a\x15.pb.ListTweetsUidResp\x12<\n" +
 	"\rGetTweetByTid\x12\x14.pb.GetTweetByTidReq\x1a\x15.pb.GetTweetByTidResp\x12?\n" +
 	"\x0eBatchGetTweets\x12\x15.pb.BatchGetTweetsReq\x1a\x16.pb.BatchGetTweetsResp\x126\n" +
 	"\vCreateTweet\x12\x12.pb.CreateTweetReq\x1a\x13.pb.CreateTweetResp\x126\n" +
-	"\vDeleteTweet\x12\x12.pb.DeleteTweetReq\x1a\x13.pb.DeleteTweetResp\x12?\n" +
-	"\x0eUpdateStatsTid\x12\x15.pb.UpdateStatsTidReq\x1a\x16.pb.UpdateStatsTidRespB\x06Z\x04./pbb\x06proto3"
+	"\vDeleteTweet\x12\x12.pb.DeleteTweetReq\x1a\x13.pb.DeleteTweetRespB\x06Z\x04./pbb\x06proto3"
 
 var (
 	file_pb_contentService_proto_rawDescOnce sync.Once
@@ -1180,53 +843,40 @@ func file_pb_contentService_proto_rawDescGZIP() []byte {
 	return file_pb_contentService_proto_rawDescData
 }
 
-var file_pb_contentService_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_pb_contentService_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_pb_contentService_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_pb_contentService_proto_goTypes = []any{
-	(SortType)(0),              // 0: pb.SortType
-	(UpdateTypeTid)(0),         // 1: pb.UpdateTypeTid
-	(UpdateFrom)(0),            // 2: pb.UpdateFrom
-	(*Tweet)(nil),              // 3: pb.Tweet
-	(*ListTweetsUidReq)(nil),   // 4: pb.ListTweetsUidReq
-	(*ListTweetsUidResp)(nil),  // 5: pb.ListTweetsUidResp
-	(*Pagination)(nil),         // 6: pb.Pagination
-	(*GetTweetByTidReq)(nil),   // 7: pb.GetTweetByTidReq
-	(*GetTweetByTidResp)(nil),  // 8: pb.GetTweetByTidResp
-	(*BatchGetTweetsReq)(nil),  // 9: pb.BatchGetTweetsReq
-	(*BatchGetTweetsResp)(nil), // 10: pb.BatchGetTweetsResp
-	(*CreateTweetReq)(nil),     // 11: pb.CreateTweetReq
-	(*CreateTweetResp)(nil),    // 12: pb.CreateTweetResp
-	(*DeleteTweetReq)(nil),     // 13: pb.DeleteTweetReq
-	(*DeleteTweetResp)(nil),    // 14: pb.DeleteTweetResp
-	(*UpdateStatsTidReq)(nil),  // 15: pb.UpdateStatsTidReq
-	(*UpdateStatsTidResp)(nil), // 16: pb.UpdateStatsTidResp
+	(*Tweet)(nil),              // 0: pb.Tweet
+	(*ListTweetsUidReq)(nil),   // 1: pb.ListTweetsUidReq
+	(*ListTweetsUidResp)(nil),  // 2: pb.ListTweetsUidResp
+	(*GetTweetByTidReq)(nil),   // 3: pb.GetTweetByTidReq
+	(*GetTweetByTidResp)(nil),  // 4: pb.GetTweetByTidResp
+	(*BatchGetTweetsReq)(nil),  // 5: pb.BatchGetTweetsReq
+	(*BatchGetTweetsResp)(nil), // 6: pb.BatchGetTweetsResp
+	(*CreateTweetReq)(nil),     // 7: pb.CreateTweetReq
+	(*CreateTweetResp)(nil),    // 8: pb.CreateTweetResp
+	(*DeleteTweetReq)(nil),     // 9: pb.DeleteTweetReq
+	(*DeleteTweetResp)(nil),    // 10: pb.DeleteTweetResp
 }
 var file_pb_contentService_proto_depIdxs = []int32{
-	0,  // 0: pb.ListTweetsUidReq.sort:type_name -> pb.SortType
-	3,  // 1: pb.ListTweetsUidResp.tweets:type_name -> pb.Tweet
-	6,  // 2: pb.ListTweetsUidResp.pagination:type_name -> pb.Pagination
-	3,  // 3: pb.GetTweetByTidResp.tweet:type_name -> pb.Tweet
-	3,  // 4: pb.BatchGetTweetsResp.tweets:type_name -> pb.Tweet
-	3,  // 5: pb.CreateTweetResp.tweet:type_name -> pb.Tweet
-	1,  // 6: pb.UpdateStatsTidReq.update_type_tid:type_name -> pb.UpdateTypeTid
-	2,  // 7: pb.UpdateStatsTidReq.update_from:type_name -> pb.UpdateFrom
-	4,  // 8: pb.Content.ListTweetsUid:input_type -> pb.ListTweetsUidReq
-	7,  // 9: pb.Content.GetTweetByTid:input_type -> pb.GetTweetByTidReq
-	9,  // 10: pb.Content.BatchGetTweets:input_type -> pb.BatchGetTweetsReq
-	11, // 11: pb.Content.CreateTweet:input_type -> pb.CreateTweetReq
-	13, // 12: pb.Content.DeleteTweet:input_type -> pb.DeleteTweetReq
-	15, // 13: pb.Content.UpdateStatsTid:input_type -> pb.UpdateStatsTidReq
-	5,  // 14: pb.Content.ListTweetsUid:output_type -> pb.ListTweetsUidResp
-	8,  // 15: pb.Content.GetTweetByTid:output_type -> pb.GetTweetByTidResp
-	10, // 16: pb.Content.BatchGetTweets:output_type -> pb.BatchGetTweetsResp
-	12, // 17: pb.Content.CreateTweet:output_type -> pb.CreateTweetResp
-	14, // 18: pb.Content.DeleteTweet:output_type -> pb.DeleteTweetResp
-	16, // 19: pb.Content.UpdateStatsTid:output_type -> pb.UpdateStatsTidResp
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 0: pb.ListTweetsUidResp.tweets:type_name -> pb.Tweet
+	0,  // 1: pb.GetTweetByTidResp.tweet:type_name -> pb.Tweet
+	0,  // 2: pb.BatchGetTweetsResp.tweets:type_name -> pb.Tweet
+	0,  // 3: pb.CreateTweetResp.tweet:type_name -> pb.Tweet
+	1,  // 4: pb.Content.ListTweetsUid:input_type -> pb.ListTweetsUidReq
+	3,  // 5: pb.Content.GetTweetByTid:input_type -> pb.GetTweetByTidReq
+	5,  // 6: pb.Content.BatchGetTweets:input_type -> pb.BatchGetTweetsReq
+	7,  // 7: pb.Content.CreateTweet:input_type -> pb.CreateTweetReq
+	9,  // 8: pb.Content.DeleteTweet:input_type -> pb.DeleteTweetReq
+	2,  // 9: pb.Content.ListTweetsUid:output_type -> pb.ListTweetsUidResp
+	4,  // 10: pb.Content.GetTweetByTid:output_type -> pb.GetTweetByTidResp
+	6,  // 11: pb.Content.BatchGetTweets:output_type -> pb.BatchGetTweetsResp
+	8,  // 12: pb.Content.CreateTweet:output_type -> pb.CreateTweetResp
+	10, // 13: pb.Content.DeleteTweet:output_type -> pb.DeleteTweetResp
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_pb_contentService_proto_init() }
@@ -1239,14 +889,13 @@ func file_pb_contentService_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_contentService_proto_rawDesc), len(file_pb_contentService_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   14,
+			NumEnums:      0,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_pb_contentService_proto_goTypes,
 		DependencyIndexes: file_pb_contentService_proto_depIdxs,
-		EnumInfos:         file_pb_contentService_proto_enumTypes,
 		MessageInfos:      file_pb_contentService_proto_msgTypes,
 	}.Build()
 	File_pb_contentService_proto = out.File

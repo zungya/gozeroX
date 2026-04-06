@@ -9,22 +9,23 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type GetLikeStatusLogic struct {
+type LikeTweetLogic struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 	logx.Logger
 }
 
-func NewGetLikeStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetLikeStatusLogic {
-	return &GetLikeStatusLogic{
+func NewLikeTweetLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LikeTweetLogic {
+	return &LikeTweetLogic{
 		ctx:    ctx,
 		svcCtx: svcCtx,
 		Logger: logx.WithContext(ctx),
 	}
 }
 
-func (l *GetLikeStatusLogic) GetLikeStatus(in *pb.GetLikeStatusReq) (*pb.GetLikeStatusResp, error) {
+// 点赞/取消点赞行为
+func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, error) {
 	// todo: add your logic here and delete this line
 
-	return &pb.GetLikeStatusResp{}, nil
+	return &pb.LikeTweetResp{}, nil
 }
