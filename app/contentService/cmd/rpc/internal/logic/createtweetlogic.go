@@ -64,15 +64,6 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 		}, nil
 	}
 
-	// 5. 获取自增ID（可选，如果需要可以获取）
-	tid, err := result.LastInsertId()
-	if err != nil {
-		logx.Errorf("Get last insert id errorx: %v", err)
-		// 即使获取失败也不影响业务，只是记录日志
-	} else {
-		tweet.Tid = tid
-	}
-
 	// 6. 存入Redis缓存（使用snowTid作为key）
 	if err := l.svcCtx.SetTweetToCache(l.ctx, snowTid, tweet); err != nil {
 		logx.Errorf("CreateTweet SetTweetToCache errorx, snowTid:%d, err:%v", snowTid, err)
