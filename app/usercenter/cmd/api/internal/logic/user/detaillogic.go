@@ -40,7 +40,7 @@ func (l *DetailLogic) Detail(req *types.UserInfoReq) (resp *types.UserInfoResp, 
 	// 这里简单处理：如果 req.Uid 不为 0，用 req.Uid，否则用 token 里的
 	queryUid := userId
 	if req.Uid != 0 {
-		// TODO: 校验权限（比如管理员才能查别人）
+		// 先默认所有人都能查，后面有需求再区分私人模式和公开模式
 		queryUid = req.Uid
 	}
 

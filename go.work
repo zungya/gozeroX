@@ -1,6 +1,7 @@
-go 1.25.5
+go 1.26.1
 
 use (
+	.
 	./app/contentService/cmd/api
 	./app/contentService/cmd/rpc
 	./app/contentService/model

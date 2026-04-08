@@ -162,3 +162,9 @@ func (m *Manager) HIncrBy(ctx context.Context, module, dataType string, id inter
 	key := m.Key(module, dataType, id)
 	return m.client.HincrbyCtx(ctx, key, field, delta)
 }
+
+// HExists 检查Hash字段是否存在
+func (m *Manager) HExists(ctx context.Context, module, dataType string, id interface{}, field string) (bool, error) {
+	key := m.Key(module, dataType, id)
+	return m.client.HexistsCtx(ctx, key, field)
+}

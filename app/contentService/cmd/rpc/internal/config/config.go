@@ -21,5 +21,12 @@ type Config struct {
 
 	Cache cache.CacheConf // ✅ 必须有这个
 
+	// Kafka 配置
+	Kafka struct {
+		Addrs  []string
+		Group  string
+		Topics []string
+	} `json:",optional"`
+
 	UserCenterRpcConf zrpc.RpcClientConf
 }

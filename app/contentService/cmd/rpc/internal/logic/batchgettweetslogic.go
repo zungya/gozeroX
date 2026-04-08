@@ -2,11 +2,12 @@ package logic
 
 import (
 	"context"
-	"gozeroX/app/contentService/model"
 	"sync"
 
 	"gozeroX/app/contentService/cmd/rpc/internal/svc"
 	"gozeroX/app/contentService/cmd/rpc/pb"
+	"gozeroX/app/contentService/model"
+	"gozeroX/app/usercenter/cmd/rpc/usercenter"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,10 +26,10 @@ func NewBatchGetTweetsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ba
 	}
 }
 
-// BatchGetTweets 3. 批量推文查询（仅返回公开的）
+// BatchGetTweets 批量推文查询（仅返回公开的）
 func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.BatchGetTweetsResp, error) {
 	// 1. 参数校验
-	if len(in.Tids) == 0 {
+	if len(in.SnowTids) == 0 {
 		return &pb.BatchGetTweetsResp{
 			Code:   0,
 			Msg:    "success",
@@ -38,7 +39,7 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 
 	// 2. 去重
 	tidSet := make(map[int64]struct{})
-	for _, tid := range in.Tids {
+	for _, tid := range in.SnowTids {
 		tidSet[tid] = struct{}{}
 	}
 	uniqueTids := make([]int64, 0, len(tidSet))
@@ -46,24 +47,21 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 		uniqueTids = append(uniqueTids, tid)
 	}
 
-	// 3. 批量从缓存获取（适配拆分后的三类缓存）
+	// 3. 批量从缓存获取推文
 	cachedTweets := make(map[int64]*model.Tweet)
 	missTids := make([]int64, 0)
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	// 并发从缓存获取
 	for _, tid := range uniqueTids {
 		wg.Add(1)
 		go func(tid int64) {
 			defer wg.Done()
 
-			// 调用svc层的合并缓存方法
 			tweet, err := l.svcCtx.GetTweetFromCache(l.ctx, tid)
 			if err == nil {
-				// 缓存命中，且只返回公开且未删除的推文
-				if tweet.IsPublic && !tweet.IsDeleted {
+				if tweet.IsPublic && tweet.Status == 0 {
 					mu.Lock()
 					cachedTweets[tid] = tweet
 					mu.Unlock()
@@ -79,31 +77,26 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 	wg.Wait()
 
 	logx.Infof("批量查询推文: 总请求=%d, 唯一TID=%d, 缓存命中=%d, 未命中=%d",
-		len(in.Tids), len(uniqueTids), len(cachedTweets), len(missTids))
+		len(in.SnowTids), len(uniqueTids), len(cachedTweets), len(missTids))
 
 	// 4. 如果没有缓存未命中的，直接返回
 	if len(missTids) == 0 {
-		return &pb.BatchGetTweetsResp{
-			Code:   0,
-			Msg:    "success",
-			Tweets: l.buildTweetsFromMap(cachedTweets),
-		}, nil
+		return l.buildRespWithUserInfo(cachedTweets)
 	}
 
 	// 5. 批量查询数据库（未命中的）
-	dbTweets, err := l.svcCtx.TweetModel.FindBatchByTids(l.ctx, missTids)
+	dbTweets, err := l.svcCtx.TweetModel.FindBatchBySnowTids(l.ctx, missTids)
 	if err != nil {
-		logx.Errorf("Batch find tweets errorx: %v", err)
+		logx.Errorf("Batch find tweets error: %v", err)
 		return nil, err
 	}
 
-	// 6. 将数据库结果写入缓存（异步，改为调用SplitTweetToCache）
+	// 6. 将数据库结果写入缓存（异步）
 	go func() {
 		for _, tweet := range dbTweets {
-			// 只缓存公开且未删除的推文
-			if tweet.IsPublic && !tweet.IsDeleted {
-				if err := l.svcCtx.SetTweetToCache(context.Background(), tweet.Tid, tweet); err != nil {
-					logx.Errorf("BatchGetTweets SplitTweetToCache errorx, tid:%d, err:%v", tweet.Tid, err)
+			if tweet.IsPublic && tweet.Status == 0 {
+				if err := l.svcCtx.SetTweetToCache(context.Background(), tweet.SnowTid, tweet); err != nil {
+					logx.Errorf("BatchGetTweets SetTweetToCache error, snowTid:%d, err:%v", tweet.SnowTid, err)
 				}
 			}
 		}
@@ -111,25 +104,78 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 
 	// 7. 合并缓存和数据库结果
 	for _, tweet := range dbTweets {
-		// 只返回公开且未删除的推文
-		if tweet.IsPublic && !tweet.IsDeleted {
-			cachedTweets[tweet.Tid] = tweet
+		if tweet.IsPublic && tweet.Status == 0 {
+			cachedTweets[tweet.SnowTid] = tweet
 		}
 	}
 
-	// 8. 构建响应（使用 svcCtx.BuildTweet）
+	// 8. 返回结果（包含用户信息）
+	return l.buildRespWithUserInfo(cachedTweets)
+}
+
+// buildRespWithUserInfo 构建响应并填充用户信息
+func (l *BatchGetTweetsLogic) buildRespWithUserInfo(tweetMap map[int64]*model.Tweet) (*pb.BatchGetTweetsResp, error) {
+	if len(tweetMap) == 0 {
+		return &pb.BatchGetTweetsResp{
+			Code:   0,
+			Msg:    "success",
+			Tweets: []*pb.Tweet{},
+		}, nil
+	}
+
+	// 1. 收集所有 uid
+	uidSet := make(map[int64]struct{})
+	for _, tweet := range tweetMap {
+		uidSet[tweet.Uid] = struct{}{}
+	}
+	uids := make([]int64, 0, len(uidSet))
+	for uid := range uidSet {
+		uids = append(uids, uid)
+	}
+
+	// 2. 批量获取用户信息
+	userBriefResp, err := l.svcCtx.UserCenterRpc.BatchGetUserBrief(l.ctx, &usercenter.BatchUserBriefReq{
+		Uids: uids,
+	})
+	if err != nil {
+		logx.Errorf("BatchGetUserBrief error: %v", err)
+		// 用户信息获取失败，仍然返回推文（只是没有用户信息）
+		return &pb.BatchGetTweetsResp{
+			Code:   0,
+			Msg:    "success",
+			Tweets: l.buildTweetsFromMap(tweetMap, nil),
+		}, nil
+	}
+
+	// 3. 构建 uid -> UserBrief 的映射
+	userMap := make(map[int64]*usercenter.UserBrief)
+	for _, user := range userBriefResp.Users {
+		userMap[user.Uid] = user
+	}
+
+	// 4. 构建推文列表（包含用户信息）
 	return &pb.BatchGetTweetsResp{
 		Code:   0,
 		Msg:    "success",
-		Tweets: l.buildTweetsFromMap(cachedTweets),
+		Tweets: l.buildTweetsFromMap(tweetMap, userMap),
 	}, nil
 }
 
-// buildTweetsFromMap 从 map 构建推文列表（使用 svcCtx.BuildTweet）
-func (l *BatchGetTweetsLogic) buildTweetsFromMap(tweetMap map[int64]*model.Tweet) []*pb.Tweet {
+// buildTweetsFromMap 从 map 构建推文列表
+func (l *BatchGetTweetsLogic) buildTweetsFromMap(tweetMap map[int64]*model.Tweet, userMap map[int64]*usercenter.UserBrief) []*pb.Tweet {
 	tweets := make([]*pb.Tweet, 0, len(tweetMap))
 	for _, tweet := range tweetMap {
-		tweets = append(tweets, l.svcCtx.BuildTweet(tweet))
+		pbTweet := l.svcCtx.BuildTweet(tweet)
+
+		// 填充用户信息
+		if userMap != nil {
+			if user, ok := userMap[tweet.Uid]; ok {
+				pbTweet.Nickname = user.Nickname
+				pbTweet.Avatar = user.Avatar
+			}
+		}
+
+		tweets = append(tweets, pbTweet)
 	}
 	return tweets
 }

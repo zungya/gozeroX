@@ -1,134 +1,153 @@
 syntax = "v1"
 
 info (
-    title: "互动微服务API"
-    desc: "前端调用接口，处理评论、点赞等互动功能"
-    author: "GoZeroX"
-    version: "1.0.0"
+	title:   "互动微服务API"
+	desc:    "前端调用接口，处理评论、点赞等互动功能"
+	author:  "GoZeroX"
+	version: "1.0.0"
 )
 
-// ==================== 基础类型 ====================
-
-type PageRequest {
-    Page     int `json:"page,default=1" form:"page,default=1"`
-    PageSize int `json:"pageSize,default=20" form:"pageSize,default=20"`
-}
-
-type PageResponse {
-    Total    int64 `json:"total"`
-    Page     int   `json:"page"`
-    PageSize int   `json:"pageSize"`
-}
-
 // ==================== 评论相关 ====================
-
-// 评论信息（API层返回给前端的完整数据，带isLiked）
-type Comment {
-    Cid        int64  `json:"cid"`
-    Tid        int64  `json:"tid"`
-    Uid        int64  `json:"uid"`
-    NickName   string `json:"nickname"`   // 从用户服务获取
-    Avatar     string `json:"avatar"`     // 从用户服务获取
-    ParentId   int64  `json:"parentId"`
-    RootId     int64  `json:"rootId"`
-    Content    string `json:"content"`
-    LikeCount  int64  `json:"likeCount"`
-    ReplyCount int64  `json:"replyCount"`
-    CreateTime string `json:"createTime"`
-    IsLiked    bool   `json:"isLiked"`    // 当前用户是否点赞
+// 评论信息（API层返回给前端的完整数据）
+type CommentInfo {
+	SnowCid    int64  `json:"snowCid,string"` // 评论ID（雪花ID，string格式给前端）
+	SnowTid    int64  `json:"snowTid,string"` // 推文ID
+	Uid        int64  `json:"uid"` // 用户ID
+	NickName   string `json:"nickname"` // 从用户服务获取
+	Avatar     string `json:"avatar"` // 从用户服务获取
+	ParentId   int64  `json:"parentId,string"` // 父评论ID，0表示顶级评论
+	RootId     int64  `json:"rootId,string"` // 根评论ID，0代表根评论
+	Content    string `json:"content"` // 评论内容
+	LikeCount  int64  `json:"likeCount"` // 点赞数
+	ReplyCount int64  `json:"replyCount"` // 回复数
+	CreateTime int64  `json:"createTime"` // 创建时间（毫秒级时间戳）
 }
 
 // 创建评论
 type CreateCommentReq {
-    Tid      int64  `json:"tid"`
-    Content  string `json:"content"`
-    ParentId int64  `json:"parentId,optional"`
+	SnowTid  int64  `json:"snowTid,string"` // 推文ID（雪花ID）
+	Content  string `json:"content"` // 评论内容
+	ParentId int64  `json:"parentId,string"` // 父评论ID，0表示顶级评论
+	RootId   int64  `json:"rootId,string"` //根评论ID，0表示顶级评论
 }
 
 type CreateCommentResp {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
-    Data    Comment `json:"data"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    CommentInfo `json:"data"`
 }
 
 // 删除评论
 type DeleteCommentReq {
-    Cid int64 `path:"cid"`
+	SnowCid int64 `path:"snowCid,string"` // 评论ID（雪花ID）
 }
 
 type DeleteCommentResp {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // 获取评论列表（顶级评论）
 type GetCommentsReq {
-    Tid      int64  `form:"tid"`
-    Sort     string `form:"sort,default=hot"`    // hot-热门 new-最新
-    PageRequest
+	SnowTid int64 `form:"snowTid,string"` // 推文ID（雪花ID）
+	Cursor  int64 `form:"cursor,optional"` // 游标：上次请求最后一条评论的createTime或综合分值，首次请求不传或传0
+	Limit   int64 `form:"limit,default=20"` // 请求数量
+	Sort    int64 `form:"sort,default=0"` // 0-综合排序（热门），1-按时间倒序（最新）
 }
 
 type GetCommentsResp {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
-    PageResponse
-    Data []Comment `json:"data"`
+	Code    int           `json:"code"`
+	Message string        `json:"message"`
+	Data    []CommentInfo `json:"data"`
+	Total   int64         `json:"total"` // 总数
 }
 
 // 获取评论回复列表
 type GetRepliesReq {
-    Cid int64 `form:"cid"`
-    PageRequest
+	RootCid int64 `form:"rootCid,string"` // 根评论ID（雪花ID）
+	Cursor  int64 `form:"cursor,optional"` // 游标：上次请求最后一条评论的createTime，首次请求不传或传0
+	Limit   int64 `form:"limit,default=20"` // 请求数量
 }
 
 type GetRepliesResp {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
-    PageResponse
-    Data []Comment `json:"data"`
+	Code    int           `json:"code"`
+	Message string        `json:"message"`
+	Data    []CommentInfo `json:"data"`
+	Total   int64         `json:"total"` // 总数
 }
 
 // ==================== 点赞相关 ====================
+type LikeInfo {
+	TargetType  int64 `json:"targetType"`
+	TargetId    int64 `json:"targetId,string"`
+	SnowLikesId int64 `json:"snowLikesId,string"` // 返回点赞记录ID，前端需要保存
+	Status      int64 `json:"status"`
+	UpdateTime  int64 `json"updateTime"`
+}
 
-// 点赞/取消点赞
+// 点赞/取消点赞（统一接口，通过targetType区分）
 type LikeReq {
-    TargetType int   `json:"targetType"` // 1-内容 2-评论
-    TargetId   int64 `json:"targetId"`
-    Action     int   `json:"action"`     // 1-点赞 0-取消
+	IsCreated   int64 `json:"isCreated"` // 0-第一次操作（创建），1-非第一次（更新）
+	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID，第一次操作时为0，更新时传之前的ID
+	TargetType  int64 `json:"targetType"` // 0-推文 1-评论
+	TargetId    int64 `json:"targetId,string"` // 目标ID（推文ID或评论ID，雪花ID）
+	Status      int64 `json:"status"` // 1-点赞 0-取消
 }
 
 type LikeResp {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
-    Data struct {
-        TargetType int   `json:"targetType"`
-        TargetId   int64 `json:"targetId"`
-        LikeCount  int64 `json:"likeCount"`
-        IsLiked    bool  `json:"isLiked"`
-    } `json:"data"`
+	Code    int      `json:"code"`
+	Message string   `json:"message"`
+	Data    LikeInfo `json:"data"`
+}
+
+type GetUserlikesAllReq {
+	LikesCursor int64 `json:"likesCursor"`
+}
+
+type UserTweetLike {
+	SnowTid     int64 `json:"snowTid,string"` // 推文ID
+	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID
+	Status      int64 `json:"status"` // 1-已点赞，0-已取消
+}
+
+type UserCommentLike {
+	SnowCid     int64 `json:"snowCid,string"` // 推文ID
+	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID
+	Status      int64 `json:"status"` // 1-已点赞，0-已取消
+}
+
+type GetUserLikesAllResp {
+	Code             int               `json:"code"`
+	Message          string            `json:"message"`
+	LikesForTweets   []UserTweetLike   `json:"likesForTweets"`
+	LikesForComments []UserCommentLike `json:"likesForComments"`
 }
 
 // ==================== Service ====================
-
-@server(
-    prefix: /interactService/v1
-    group: interaction
+// 全部都要jwt，到时候在handler下面的routes.go里的http请求前面封装
+@server (
+	prefix: /interactService/v1
+	group:  interaction
 )
 service interaction-api {
-    // 评论接口
-    @handler createComment
-    post /createComment (CreateCommentReq) returns (CreateCommentResp)
+	// 评论接口
+	@handler createComment
+	post /createComment (CreateCommentReq) returns (CreateCommentResp)
 
-    @handler deleteComment
-    delete /deleteComment (DeleteCommentReq) returns (DeleteCommentResp)
+	@handler deleteComment
+	delete /deleteComment (DeleteCommentReq) returns (DeleteCommentResp)
 
-    @handler getComments
-    get /getComments (GetCommentsReq) returns (GetCommentsResp)
+	@handler getComments
+	get /getComments (GetCommentsReq) returns (GetCommentsResp)
 
-    @handler getReplies
-    get /getReplies (GetRepliesReq) returns (GetRepliesResp)
+	@handler getReplies
+	get /getReplies (GetRepliesReq) returns (GetRepliesResp)
 
-    // 点赞接口
-    @handler like
-    post /like (LikeReq) returns (LikeResp)
+	// 点赞接口
+	@handler like
+	get /like (LikeReq) returns (LikeResp)
+
+	@handler getUserLikesAll
+	get /getUserLikesAll (GetUserlikesAllReq) returns (GetUserLikesAllResp)
 }
+

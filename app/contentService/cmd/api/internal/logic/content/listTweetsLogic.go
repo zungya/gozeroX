@@ -1,14 +1,11 @@
-// Code scaffolded by goctl. Safe to edit.
-// goctl 1.9.2
-
 package content
 
 import (
 	"context"
-	"gozeroX/app/contentService/cmd/rpc/pb"
 
 	"gozeroX/app/contentService/cmd/api/internal/svc"
 	"gozeroX/app/contentService/cmd/api/internal/types"
+	"gozeroX/app/contentService/cmd/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,66 +24,52 @@ func NewListTweetsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListTw
 	}
 }
 
-func (l *ListTweetsLogic) ListTweets(req *types.ListTweetsUidReq) (resp *types.ListTweetsUidResp, err error) {
-	// todo: add your logic here and delete this line
-	// 1. 从 JWT 中获取当前登录用户ID（如果有）
-	currentUid, _ := l.ctx.Value("uid").(int64)
+func (l *ListTweetsLogic) ListTweets(req *types.ListTweetsReq) (resp *types.ListTweetsResp, err error) {
+	// 从 JWT 获取当前用户ID，判断是否查看自己的主页
+	// 查看自己的主页可以看到私密推文，查看别人主页只能看公开推文
+	currentUid, _ := l.ctx.Value("user_id").(int64)
+	isOwnProfile := currentUid > 0 && currentUid == req.QueryUid
 
-	// 2. 判断是否为查看自己的主页
-	isOwn := currentUid > 0 && currentUid == req.Uid
-
-	// 3. 调用 RPC
 	rpcResp, err := l.svcCtx.ContentServiceRpc.ListTweetsUid(l.ctx, &pb.ListTweetsUidReq{
-		QueryUid: req.Uid,
-		IsPublic: isOwn, // true: 自己的主页(查所有), false: 别人主页(只查公开)
-		Page:     req.Page,
-		Size:     req.Size,
-		Sort:     l.convertSort(req.Sort),
+		QueryUid: req.QueryUid,
+		IsPublic: isOwnProfile, // true=包含私密推文，false=仅公开
+		Cursor:   req.Cursor,
+		Limit:    req.Limit,
+		Sort:     req.Sort,
 	})
 	if err != nil {
-		logx.Errorf("ListTweetsUid RPC errorx: %v", err)
 		return nil, err
 	}
 
-	// 4. 转换响应 - ✅ 直接使用 types.ListData 和 types.Pagination
-	list := make([]types.Tweet, 0, len(rpcResp.Tweets))
+	if rpcResp.Code != 0 {
+		return &types.ListTweetsResp{
+			Code: rpcResp.Code,
+			Msg:  rpcResp.Msg,
+		}, nil
+	}
+
+	tweets := make([]types.Tweet, 0, len(rpcResp.Tweets))
 	for _, t := range rpcResp.Tweets {
-		list = append(list, types.Tweet{
-			Tid:          t.Tid,
+		tweets = append(tweets, types.Tweet{
+			SnowTid:      t.SnowTid,
 			Uid:          t.Uid,
 			Content:      t.Content,
 			MediaUrls:    t.MediaUrls,
 			Tags:         t.Tags,
 			IsPublic:     t.IsPublic,
 			CreatedAt:    t.CreatedAt,
-			IsDeleted:    t.IsDeleted,
 			LikeCount:    t.LikeCount,
 			CommentCount: t.CommentCount,
+			Status:       t.Status,
+			Nickname:     t.Nickname,
+			Avatar:       t.Avatar,
 		})
 	}
 
-	return &types.ListTweetsUidResp{
-		Code: rpcResp.Code,
-		Msg:  rpcResp.Msg,
-		Data: types.ListData{ // ✅ 直接用 types.ListData
-			List: list,
-			Pagination: types.Pagination{ // ✅ 直接用 types.Pagination
-				Page:  rpcResp.Pagination.Page,
-				Size:  rpcResp.Pagination.Size,
-				Total: rpcResp.Pagination.Total,
-			},
-		},
+	return &types.ListTweetsResp{
+		Code:  0,
+		Msg:   "success",
+		Data:  tweets,
+		Total: rpcResp.Total,
 	}, nil
-}
-
-// 转换排序参数
-func (l *ListTweetsLogic) convertSort(sort string) pb.SortType {
-	switch sort {
-	case "created_at_desc":
-		return pb.SortType_CREATED_AT_DESC
-	case "created_at_asc":
-		return pb.SortType_CREATED_AT_ASC
-	default:
-		return pb.SortType_CREATED_AT_DESC
-	}
 }

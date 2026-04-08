@@ -2,26 +2,31 @@ package svc
 
 import (
 	"context"
+	"gozeroX/app/interactService/cmd/rpc/internal/config"
+	"gozeroX/app/interactService/model"
+	"gozeroX/app/usercenter/cmd/rpc/usercenter"
+	"gozeroX/pkg/cache"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/queue"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
-	"gozeroX/app/interactService/cmd/rpc/internal/config"
-	"gozeroX/app/interactService/model"
-	"gozeroX/pkg/cache"
-	"strconv"
-	"sync"
-	"time"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 type ServiceContext struct {
-	Config        config.Config
-	RedisClient   *redis.Redis
-	CacheManager  *cache.Manager
-	CommentModel  model.CommentModel
-	LikesModel    model.LikesModel
-	QueueProducer *queue.Producer
+	Config            config.Config
+	RedisClient       *redis.Redis
+	CacheManager      *cache.Manager
+	CommentModel      model.CommentModel
+	LikesTweetModel   model.LikesTweetModel
+	LikesCommentModel model.LikesCommentModel
+	QueueProducer     *queue.Producer
+	UserCenterRpc     usercenter.UserCenter
 
 	pusherMu   sync.RWMutex
 	pusherPool map[string]*kq.Pusher // topic -> pusher
@@ -42,12 +47,14 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	cacheManager := cache.NewManager(redisClient)
 
 	return &ServiceContext{
-		Config:       c,
-		RedisClient:  redisClient,
-		CacheManager: cacheManager,
-		CommentModel: model.NewCommentModel(sqlConn, c.Cache),
-		LikesModel:   model.NewLikesModel(sqlConn, c.Cache),
-		pusherPool:   make(map[string]*kq.Pusher),
+		Config:            c,
+		RedisClient:       redisClient,
+		CacheManager:      cacheManager,
+		CommentModel:      model.NewCommentModel(sqlConn, c.Cache),
+		LikesTweetModel:   model.NewLikesTweetModel(sqlConn, c.Cache),
+		LikesCommentModel: model.NewLikesCommentModel(sqlConn, c.Cache),
+		UserCenterRpc:     usercenter.NewUserCenter(zrpc.MustNewClient(c.UserCenterRpcConf)),
+		pusherPool:        make(map[string]*kq.Pusher),
 	}
 }
 
@@ -92,16 +99,18 @@ func (s *ServiceContext) Close() {
 		delete(s.pusherPool, topic)
 	}
 }
+
+// SetCommentToCache 将评论存入缓存（时间用int64毫秒戳）
 func (s *ServiceContext) SetCommentToCache(ctx context.Context, snowCid int64, comment *model.Comment) error {
 	fields := map[string]interface{}{
 		"snow_cid":    comment.SnowCid,
-		"tid":         comment.Tid,
+		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
 		"parent_id":   comment.ParentId,
 		"root_id":     comment.RootId,
 		"content":     comment.Content,
 		"status":      comment.Status,
-		"create_time": comment.CreateTime,
+		"created_at":  comment.CreatedAt,
 		"like_count":  comment.LikeCount,
 		"reply_count": comment.ReplyCount,
 	}
@@ -136,8 +145,8 @@ func (s *ServiceContext) GetCommentFromCache(ctx context.Context, snowCid int64)
 	if v, ok := fields["snow_cid"]; ok {
 		comment.SnowCid, _ = strconv.ParseInt(v, 10, 64)
 	}
-	if v, ok := fields["tid"]; ok {
-		comment.Tid, _ = strconv.ParseInt(v, 10, 64)
+	if v, ok := fields["snow_tid"]; ok {
+		comment.SnowTid, _ = strconv.ParseInt(v, 10, 64)
 	}
 	if v, ok := fields["uid"]; ok {
 		comment.Uid, _ = strconv.ParseInt(v, 10, 64)
@@ -154,8 +163,8 @@ func (s *ServiceContext) GetCommentFromCache(ctx context.Context, snowCid int64)
 	if v, ok := fields["status"]; ok {
 		comment.Status, _ = strconv.ParseInt(v, 10, 64)
 	}
-	if v, ok := fields["create_time"]; ok {
-		comment.CreateTime, _ = time.Parse(time.RFC3339, v)
+	if v, ok := fields["created_at"]; ok {
+		comment.CreatedAt, _ = strconv.ParseInt(v, 10, 64)
 	}
 	if v, ok := fields["like_count"]; ok {
 		comment.LikeCount, _ = strconv.ParseInt(v, 10, 64)
@@ -186,11 +195,13 @@ func (s *ServiceContext) DelCommentCache(ctx context.Context, snowCid int64) {
 	}
 }
 
-func (s *ServiceContext) IncrTweetCommentCount(ctx context.Context, tid int64, delta int) error {
-	_, err := s.CacheManager.HIncrBy(ctx, "tweet", "info", tid, "comment_count", delta)
+// IncrTweetCommentCount 增加推文评论数（推文缓存由contentService管理，这里只是辅助方法）
+func (s *ServiceContext) IncrTweetCommentCount(ctx context.Context, snowTid int64, delta int) error {
+	_, err := s.CacheManager.HIncrBy(ctx, "tweet", "info", snowTid, "comment_count", delta)
 	return err
 }
 
+// GetCommentBySnowCid 根据雪花ID获取评论（先缓存后DB）
 func (s *ServiceContext) GetCommentBySnowCid(ctx context.Context, snowCid int64) (*model.Comment, error) {
 	// 1. 先从缓存获取
 	comment, err := s.GetCommentFromCache(ctx, snowCid)
@@ -199,7 +210,7 @@ func (s *ServiceContext) GetCommentBySnowCid(ctx context.Context, snowCid int64)
 	}
 
 	// 2. 缓存未命中，从数据库查询
-	comment, err = s.CommentModel.FindOneBySnowCid(ctx, snowCid)
+	comment, err = s.CommentModel.FindOne(ctx, snowCid)
 	if err != nil {
 		return nil, err
 	}
@@ -212,16 +223,16 @@ func (s *ServiceContext) GetCommentBySnowCid(ctx context.Context, snowCid int64)
 	return comment, nil
 }
 
-// GetTopCommentsByTid 获取推文的顶级评论snow_cid列表（先缓存后DB）
-func (s *ServiceContext) GetTopCommentsByTid(ctx context.Context, tid int64) ([]int64, error) {
+// GetTopCommentsBySnowTid 获取推文的顶级评论snow_cid列表（先缓存后DB）
+func (s *ServiceContext) GetTopCommentsBySnowTid(ctx context.Context, snowTid int64) ([]int64, error) {
 	// 1. 先从缓存获取snow_cid列表
-	snowCids, err := s.CacheManager.SMembers(ctx, "tweet", "top_comments", tid)
+	snowCids, err := s.CacheManager.SMembers(ctx, "tweet", "top_comments", snowTid)
 	if err == nil && len(snowCids) > 0 {
 		return snowCids, nil
 	}
 
 	// 2. 缓存未命中，从数据库查询顶级评论（parent_id=0）
-	dbSnowCids, err := s.CommentModel.FindTopSnowCidsByTid(ctx, tid)
+	dbSnowCids, err := s.CommentModel.FindTopSnowCidsByTid(ctx, snowTid)
 	if err != nil {
 		return nil, err
 	}
@@ -229,26 +240,24 @@ func (s *ServiceContext) GetTopCommentsByTid(ctx context.Context, tid int64) ([]
 	// 3. 回写缓存（异步）
 	if len(dbSnowCids) > 0 {
 		go func() {
-			// 使用CacheManager的SAdd方法存储到Set
-			_ = s.CacheManager.SAdd(context.Background(), "tweet", "top_comments", tid, dbSnowCids...)
-			// 设置过期时间（30分钟）
-			_ = s.CacheManager.Expire(context.Background(), "tweet", "top_comments", tid, 1800)
+			_ = s.CacheManager.SAdd(context.Background(), "tweet", "top_comments", snowTid, dbSnowCids...)
+			_ = s.CacheManager.Expire(context.Background(), "tweet", "top_comments", snowTid, 1800)
 		}()
 	}
 
 	return dbSnowCids, nil
 }
 
-// GetRepliesByParentId 获取父评论的回复snow_cid列表（先缓存后DB）
-func (s *ServiceContext) GetRepliesByParentId(ctx context.Context, parentSnowCid int64) ([]int64, error) {
+// GetRepliesByRootId 获取根评论下的所有回复snow_cid列表（先缓存后DB）
+func (s *ServiceContext) GetRepliesByRootId(ctx context.Context, rootSnowCid int64) ([]int64, error) {
 	// 1. 先从缓存获取回复snow_cid列表
-	replySnowCids, err := s.CacheManager.SMembers(ctx, "comment", "replies", parentSnowCid)
+	replySnowCids, err := s.CacheManager.SMembers(ctx, "comment", "replies", rootSnowCid)
 	if err == nil && len(replySnowCids) > 0 {
 		return replySnowCids, nil
 	}
 
-	// 2. 缓存未命中，从数据库查询回复（parent_id = parentSnowCid）
-	dbReplySnowCids, err := s.CommentModel.FindReplySnowCidsByParentId(ctx, parentSnowCid)
+	// 2. 缓存未命中，从数据库查询回复（root_id = rootSnowCid AND parent_id != 0）
+	dbReplySnowCids, err := s.CommentModel.FindReplySnowCidsByParentId(ctx, rootSnowCid)
 	if err != nil {
 		return nil, err
 	}
@@ -256,10 +265,8 @@ func (s *ServiceContext) GetRepliesByParentId(ctx context.Context, parentSnowCid
 	// 3. 回写缓存（异步）
 	if len(dbReplySnowCids) > 0 {
 		go func() {
-			// 使用CacheManager的SAdd方法存储到Set
-			_ = s.CacheManager.SAdd(context.Background(), "comment", "replies", parentSnowCid, dbReplySnowCids...)
-			// 设置过期时间（30分钟）
-			_ = s.CacheManager.Expire(context.Background(), "comment", "replies", parentSnowCid, 1800)
+			_ = s.CacheManager.SAdd(context.Background(), "comment", "replies", rootSnowCid, dbReplySnowCids...)
+			_ = s.CacheManager.Expire(context.Background(), "comment", "replies", rootSnowCid, 1800)
 		}()
 	}
 

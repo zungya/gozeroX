@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"gozeroX/app/interactService/model"
-	"strconv"
 	"time"
 
 	"gozeroX/app/interactService/cmd/rpc/internal/svc"
@@ -30,63 +29,79 @@ func NewDeleteCommentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Del
 
 // DeleteComment 删除评论（软删除：先更新DB，再更新缓存中的status）
 func (l *DeleteCommentLogic) DeleteComment(in *pb.DeleteCommentReq) (*pb.DeleteCommentResp, error) {
-	// 1. 将前端传来的string类型的snow_cid转换为int64
-	snowCid, err := strconv.ParseInt(in.SnowCid, 10, 64)
+	// 1. 查询评论是否存在
+	comment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, in.SnowCid)
 	if err != nil {
-		logx.Errorf("DeleteComment parse snow_cid errorx: %v", err)
-		return nil, fmt.Errorf("评论ID格式错误: %v", err)
+		logx.Errorf("DeleteComment find comment by snowCid %d errorx: %v", in.SnowCid, err)
+		return &pb.DeleteCommentResp{
+			Code:    120201,
+			Msg:     "评论不存在",
+			Success: false,
+		}, nil
 	}
 
-	data, err := l.svcCtx.CommentModel.FindOneBySnowCid(l.ctx, snowCid)
-	if err != nil {
-		return nil, fmt.Errorf("删除的评论再数据库中不存在: %v", err)
+	// 2. 权限校验：只能删除自己的评论
+	if comment.Uid != in.Uid {
+		return &pb.DeleteCommentResp{
+			Code:    120202,
+			Msg:     "无权删除此评论",
+			Success: false,
+		}, nil
 	}
 
-	// 准备更新的数据
+	// 3. 准备更新的数据（软删除，status=1）
+	now := time.Now().UnixMilli()
 	newData := &model.Comment{
-		Cid:        data.Cid,
-		Tid:        data.Tid,
-		Uid:        data.Uid,
-		ParentId:   data.ParentId,
-		RootId:     data.RootId,
-		Content:    data.Content,
-		LikeCount:  data.LikeCount,
-		ReplyCount: data.ReplyCount,
-		Status:     1, // 只更新status
-		SnowCid:    data.SnowCid,
+		SnowCid:    comment.SnowCid,
+		Cid:        comment.Cid,
+		SnowTid:    comment.SnowTid,
+		Uid:        comment.Uid,
+		ParentId:   comment.ParentId,
+		RootId:     comment.RootId,
+		Content:    comment.Content,
+		LikeCount:  comment.LikeCount,
+		ReplyCount: comment.ReplyCount,
+		Status:     1, // 软删除
+		CreatedAt:  comment.CreatedAt,
+		UpdatedAt:  now,
 	}
 
-	// 2. 先更新数据库（软删除）
-
-	err = l.svcCtx.CommentModel.Update(l.ctx, newData) // status=1表示删除
+	// 4. 先更新数据库
+	err = l.svcCtx.CommentModel.Update(l.ctx, newData)
 	if err != nil {
-		logx.Errorf("DeleteComment update db errorx, snowCid:%d, err:%v", snowCid, err)
-		return nil, fmt.Errorf("删除评论失败: %v", err)
+		logx.Errorf("DeleteComment update db errorx, snowCid:%d, err:%v", in.SnowCid, err)
+		return &pb.DeleteCommentResp{
+			Code:    120203,
+			Msg:     "删除评论失败",
+			Success: false,
+		}, nil
 	}
 
-	// 3. 获取评论信息（直接从数据库查，因为刚更新完）
-	comment, err := l.svcCtx.CommentModel.FindOneBySnowCid(l.ctx, snowCid)
-	if err != nil {
-		logx.Errorf("DeleteComment get comment from db errorx, snowCid:%d, err:%v", snowCid, err)
-	} else {
-		// 4. 更新缓存中的status为1（不删缓存，只更新状态）
-		if err := l.svcCtx.SetCommentToCache(l.ctx, snowCid, comment); err != nil {
-			logx.Errorf("DeleteComment update cache errorx, snowCid:%d, err:%v", snowCid, err)
-			// 缓存更新失败，但数据库已更新，可以返回成功
-			// 后续有缓存会通过消息队列补偿
-			go l.sendStatusSyncMessage(snowCid, 1)
-		}
-
-		// 5. 异步更新计数（推文评论数减1）
-		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, comment.Tid, 1); err != nil {
-			logx.Errorf("CreateComment incr comment reply count errorx, commentid:%d, err:%v", comment.Tid, err)
-		}
+	// 5. 更新缓存中的status为1
+	if err := l.svcCtx.SetCommentToCache(l.ctx, in.SnowCid, newData); err != nil {
+		logx.Errorf("DeleteComment update cache errorx, snowCid:%d, err:%v", in.SnowCid, err)
+		// 缓存更新失败，发送补偿消息
+		go l.sendStatusSyncMessage(in.SnowCid, 1)
 	}
 
-	// 6. 返回成功
+	// 6. 更新相关计数
+	go func() {
+		// 减少推文评论数
+		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, comment.SnowTid, -1); err != nil {
+			logx.Errorf("DeleteComment decr tweet comment count errorx, snowTid:%d, err:%v", comment.SnowTid, err)
+		}
+		// 如果是回复，减少父评论的回复数
+		if comment.ParentId != 0 {
+			if err := l.svcCtx.IncrCommentReplyCount(l.ctx, comment.ParentId, -1); err != nil {
+				logx.Errorf("DeleteComment decr comment reply count errorx, parentId:%d, err:%v", comment.ParentId, err)
+			}
+		}
+	}()
+
 	return &pb.DeleteCommentResp{
+		Code:    0,
+		Msg:     "success",
 		Success: true,
-		SnowCid: in.SnowCid,
 	}, nil
 }
 
@@ -96,13 +111,13 @@ func (l *DeleteCommentLogic) sendStatusSyncMessage(snowCid int64, status int64) 
 		"action":      "sync_comment_status",
 		"snow_cid":    snowCid,
 		"status":      status,
-		"update_time": time.Now().Unix(),
+		"update_time": time.Now().UnixMilli(),
 	}
 
 	body, _ := json.Marshal(message)
 	pusher := l.svcCtx.GetPusher("comment_status_sync")
 
-	err := pusher.PushWithKey(context.Background(), strconv.FormatInt(snowCid, 10), string(body))
+	err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d", snowCid), string(body))
 	if err != nil {
 		logx.Errorf("sendStatusSyncMessage errorx, snowCid:%d, err:%v", snowCid, err)
 	}

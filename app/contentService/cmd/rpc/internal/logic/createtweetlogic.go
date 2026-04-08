@@ -2,13 +2,14 @@ package logic
 
 import (
 	"context"
-	"github.com/lib/pq"
-	"gozeroX/app/contentService/model"
-	"gozeroX/pkg/idgen"
 	"time"
 
+	"github.com/lib/pq"
 	"gozeroX/app/contentService/cmd/rpc/internal/svc"
 	"gozeroX/app/contentService/cmd/rpc/pb"
+	"gozeroX/app/contentService/model"
+	"gozeroX/app/usercenter/cmd/rpc/usercenter"
+	"gozeroX/pkg/idgen"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,22 +28,22 @@ func NewCreateTweetLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Creat
 	}
 }
 
+// CreateTweet 创建推文
 func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetResp, error) {
-
-	// 2. 生成雪花ID作为业务主键
+	// 1. 生成雪花ID作为业务主键
 	snowTid, err := idgen.GenID()
 	if err != nil {
-		logx.Errorf("CreateTweet generate snowflake id errorx: %v", err)
+		logx.Errorf("CreateTweet generate snowflake id error: %v", err)
 		return &pb.CreateTweetResp{
 			Code: 500,
 			Msg:  "生成推文ID失败",
 		}, nil
 	}
 
-	// 3. 构建推文对象（使用新的表结构）
+	// 2. 构建推文对象
 	now := time.Now().UnixMilli() // 毫秒时间戳
 	tweet := &model.Tweet{
-		SnowTid:      snowTid, // 雪花ID作为业务主键
+		SnowTid:      snowTid,
 		Uid:          in.Uid,
 		Content:      in.Content,
 		MediaUrls:    pq.StringArray(in.MediaUrls),
@@ -54,32 +55,50 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 		CreatedAt:    now,
 	}
 
-	// 4. 插入数据库（tid 是自增的，数据库会自动生成）
-	result, err := l.svcCtx.TweetModel.Insert(l.ctx, tweet)
+	// 3. 插入数据库
+	_, err = l.svcCtx.TweetModel.Insert(l.ctx, tweet)
 	if err != nil {
-		logx.Errorf("Insert tweet errorx: %v", err)
+		logx.Errorf("CreateTweet insert tweet error: %v", err)
 		return &pb.CreateTweetResp{
 			Code: 500,
 			Msg:  "发布推文失败",
 		}, nil
 	}
 
-	// 6. 存入Redis缓存（使用snowTid作为key）
+	// 4. 存入Redis缓存
 	if err := l.svcCtx.SetTweetToCache(l.ctx, snowTid, tweet); err != nil {
-		logx.Errorf("CreateTweet SetTweetToCache errorx, snowTid:%d, err:%v", snowTid, err)
+		logx.Errorf("CreateTweet SetTweetToCache error, snowTid:%d, err:%v", snowTid, err)
 	}
 
-	// 7. 异步更新用户推文数
+	// 5. 异步更新用户推文数
 	go func() {
-		if err := l.svcCtx.IncrUserTweetCount(context.Background()); err != nil {
-			logx.Errorf("IncrUserTweetCount errorx, uid:%d, err:%v", in.Uid, err)
+		if err := l.svcCtx.IncrUserPostCount(context.Background(), in.Uid, 1); err != nil {
+			logx.Errorf("CreateTweet IncrUserPostCount error, uid:%d, err:%v", in.Uid, err)
 		}
 	}()
 
-	// 8. 返回结果
+	// 6. 获取用户信息（用于填充 nickname 和 avatar）
+	userResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{Uid: in.Uid})
+	if err != nil {
+		logx.Errorf("CreateTweet GetUserInfo error, uid:%d, err:%v", in.Uid, err)
+		// 用户信息获取失败，仍然返回推文（只是没有用户信息）
+		return &pb.CreateTweetResp{
+			Code:  0,
+			Msg:   "success",
+			Tweet: l.svcCtx.BuildTweet(tweet),
+		}, nil
+	}
+
+	// 7. 构建返回结果（包含用户信息）
+	pbTweet := l.svcCtx.BuildTweet(tweet)
+	if userResp.Code == 0 && userResp.UserInfo != nil {
+		pbTweet.Nickname = userResp.UserInfo.Nickname
+		pbTweet.Avatar = userResp.UserInfo.Avatar
+	}
+
 	return &pb.CreateTweetResp{
 		Code:  0,
 		Msg:   "success",
-		Tweet: l.svcCtx.BuildTweet(tweet),
+		Tweet: pbTweet,
 	}, nil
 }

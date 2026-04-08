@@ -6,100 +6,96 @@ package pb;
 
 // ========== 基础结构体 ==========
 message Tweet {
-  int64  snow_tid = 1;          // 推文ID
+  int64  snow_tid = 1;          // 推文ID（雪花算法）
   int64  uid = 2;          // 发布用户ID
   string content = 3;      // 推文内容
   repeated string media_urls = 4; // 图片链接
   repeated string tags = 5; // 标签
   bool is_public = 6;      // 是否公开
-  int64  created_at = 7;   // 创建时间
-  int64 like_count = 8;    // 点赞数
-  int64 comment_count = 9; // 评论数
-  int64 status = 10;       // 推文状态，0正常，1已删除
+  int64  created_at = 7;   // 创建时间（毫秒时间戳）
+  int64  like_count = 8;    // 点赞数
+  int64  comment_count = 9; // 评论数
+  int64  status = 10;       // 推文状态（0正常，1删除，2审核）
 
-  // 以下字段不存储在数据库中，而是通过关联查询获取的额外信息
+  // 以下字段不存储在数据库中，通过关联查询获取
   string nickname = 11;     // 发布用户昵称
   string avatar = 12;       // 发布用户头像
-  int64  isLiked = 13;       // 当前请求用户是否点赞了这条推文
 }
 
-// ========== 用户主页推文列表查询 ==========
+// ========== 用户主页推文列表查询（游标分页） ==========
 message ListTweetsUidReq {
-  int64  query_uid = 1;     // 要查询的用户ID（主页所属用户）
-  bool   is_public = 2;      // 是否也要查询不公开的
-  int64  cursor = 3;        // 上次请求最后一条推文的created_at，第一次请求可以不传或者传0，后端根据这个cursor进行分页查询，返回下一页的推文列表
+  int64  query_uid = 1;     // 要查询的用户ID
+  bool  is_public = 2;      // 是否包含私密推文（true=包含，false=仅公开）
+  int64  cursor = 3;        // 游标：上次最后一条的created_at，首次传0
   int64  limit = 4;          // 每页条数
-  int64 sort = 5;          // 排序,0是desc，1是asc，默认0
+  int64  sort = 5;          // 排序(0=DESC, 1=ASC)
 }
 
-
-// 响应：和之前一致
 message ListTweetsUidResp {
-  int64 code = 1;
+  int64  code = 1;
   string msg = 2;
-  repeated Tweet tweets = 3; // 过滤后的推文列表
-  int64 total = 4; // 过滤后的推文总数，供前端判断是否还有下一页
+  repeated Tweet tweets = 3;
+  int64  total = 4;           // 总数（用于判断是否还有下一页）
 }
 
-// ========== 单条推文查询==========
-message GetTweetByTidReq {
-  int64 tid = 1;
+// ========== 单条推文查询 ==========
+message GetTweetBySnowTidReq {
+  int64  snow_tid = 1;      // 推文ID（雪花算法）
 }
 
-message GetTweetByTidResp {
-  int64 code = 1;
+message GetTweetBySnowTidResp {
+  int64  code = 1;
   string msg = 2;
   Tweet tweet = 3;
 }
 
-// ========== 批量推文查询（供推荐与搜索微服务调用） ==========
+// ========== 批量推文查询 ==========
 message BatchGetTweetsReq {
-  repeated int64 tids = 1;
+  repeated int64  snow_tids = 1;  // 推文ID列表
 }
 
 message BatchGetTweetsResp {
-  int64 code = 1;
+  int64  code = 1;
   string msg = 2;
-  repeated Tweet tweets = 3; // 返回推文
+  repeated Tweet tweets = 3;
 }
 
-// 创建推文
+// ========== 创建推文 ==========
 message CreateTweetReq {
-  int64 uid = 1;
+  int64  uid = 1;
   string content = 2;
   repeated string media_urls = 3;
   repeated string tags = 4;
-  bool is_public = 5;
+  bool  is_public = 5;
 }
 
 message CreateTweetResp {
-  int64 code = 1;
+  int64  code = 1;
   string msg = 2;
   Tweet tweet = 3;
 }
 
-// 删除推文
+// ========== 删除推文 ==========
 message DeleteTweetReq {
-  int64 tid = 1;
-  int64 uid = 2;
+  int64  snow_tid = 1;      // 推文ID（雪花算法）
+  int64  uid = 2;          // 操作用户ID（用于权限校验）
 }
 
 message DeleteTweetResp {
-  int64 code = 1;
+  int64  code = 1;
   string msg = 2;
 }
 
-
-// ========== 核心RPC服务定义 ==========
+// ========== RPC 服务定义 ==========
 service Content {
-  // 1. 用户主页推文列表（带权限过滤）
+  // 用户主页推文列表（游标分页）
   rpc ListTweetsUid(ListTweetsUidReq) returns (ListTweetsUidResp);
-  // 2. 单条推文查询
-  rpc GetTweetByTid(GetTweetByTidReq) returns (GetTweetByTidResp);
-  // 3. 批量推文查询（仅返回公开的）
+  // 单条推文查询
+  rpc GetTweetBySnowTid(GetTweetBySnowTidReq) returns (GetTweetBySnowTidResp);
+  // 批量推文查询
   rpc BatchGetTweets(BatchGetTweetsReq) returns (BatchGetTweetsResp);
-  // 4. 创建推文（供API调用）
+  // 创建推文
   rpc CreateTweet(CreateTweetReq) returns (CreateTweetResp);
-  // 5. 删除推文（供API调用）
+  // 删除推文
   rpc DeleteTweet(DeleteTweetReq) returns (DeleteTweetResp);
 }

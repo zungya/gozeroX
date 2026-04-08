@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"gozeroX/app/interactService/model"
+	"gozeroX/app/usercenter/cmd/rpc/usercenter"
 	"gozeroX/pkg/idgen"
-	"strconv"
 	"time"
 
 	"gozeroX/app/interactService/cmd/rpc/internal/svc"
@@ -35,37 +35,35 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	snowCid, err := idgen.GenID()
 	if err != nil {
 		logx.Errorf("CreateComment generate snowflake id errorx: %v", err)
-		return nil, fmt.Errorf("生成评论ID失败: %v", err)
+		return &pb.CreateCommentResp{
+			Code: 120101,
+			Msg:  "生成评论ID失败",
+		}, nil
 	}
 
-	// 2. 构建评论对象
-	now := time.Now()
+	// 2. 构建评论对象（时间用毫秒戳）
+	now := time.Now().UnixMilli()
 	comment := &model.Comment{
-		Tid:        in.Tid,
+		SnowCid:    snowCid,
+		SnowTid:    in.SnowTid,
 		Uid:        in.Uid,
 		ParentId:   in.ParentId,
+		RootId:     in.RootId,
 		Content:    in.Content,
 		LikeCount:  0,
 		ReplyCount: 0,
 		Status:     0,
-		CreateTime: now,
-		SnowCid:    snowCid,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
-	// 3. 处理rootId逻辑（使用SnowCid）
+	// 3. 处理rootId逻辑
 	if in.ParentId != 0 {
-		// 查询父评论（统一方法：先查缓存，再查DB，然后回写缓存）
-		parentComment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, in.ParentId)
-		if err != nil {
-			logx.Errorf("CreateComment find parent comment by snowCid %d errorx: %v", in.ParentId, err)
-			return nil, fmt.Errorf("父评论不存在: %v", err)
-		}
-
-		// 父评论的rootId如果是0，说明父评论是顶级评论，则使用父评论的SnowCid作为rootId
-		if parentComment.RootId == 0 {
-			comment.RootId = parentComment.SnowCid
+		// 父评论的rootId如果是0，说明父评论是顶级评论,则使用父评论的SnowCid作为rootId，否则就说明父评论不是根评论，直接使用rootId
+		if in.RootId == 0 {
+			comment.RootId = in.ParentId
 		} else {
-			comment.RootId = parentComment.RootId
+			comment.RootId = in.RootId
 		}
 	} else {
 		comment.RootId = 0 // 顶级评论，rootId为0
@@ -74,80 +72,108 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	// 4. 先写缓存
 	if err := l.svcCtx.SetCommentToCache(l.ctx, snowCid, comment); err != nil {
 		logx.Errorf("CreateComment SetCommentToCache errorx, snowCid:%d, err:%v", snowCid, err)
-		return nil, fmt.Errorf("缓存评论失败: %v", err)
+		return &pb.CreateCommentResp{
+			Code: 120103,
+			Msg:  "缓存评论失败",
+		}, nil
 	}
-	// 在写缓存之后，如果是顶级评论，添加到tid的Set
+
+	// 5. 更新相关缓存计数和列表
 	if in.ParentId == 0 {
+		// 顶级评论：添加到推文的顶级评论列表
 		go func() {
-			if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.ParentId, 1); err != nil {
-				logx.Errorf("CreateComment incr comment reply count errorx, parentid:%d, err:%v", in.ParentId, err)
+			// 增加推文评论数
+			if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
+				logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
 			}
-			// 使用CacheManager的SAdd方法
+			// 添加到顶级评论Set
 			_ = l.svcCtx.CacheManager.SAdd(
 				context.Background(),
 				"tweet",
 				"top_comments",
-				in.Tid,
-				snowCid, // 直接传int64
+				in.SnowTid,
+				snowCid,
 			)
 		}()
-	}
-
-	if in.ParentId != 0 {
+	} else {
+		// 回复评论：增加父评论的回复数，添加到回复列表
 		go func() {
-			if err := l.svcCtx.IncrCommentReplyCount(l.ctx, in.ParentId, 1); err != nil {
-				logx.Errorf("CreateComment incr comment reply count errorx, parentid:%d, err:%v", in.ParentId, err)
+			if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
+				logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
 			}
-			// 使用CacheManager的SAdd方法
-			_ = l.svcCtx.CacheManager.SAdd(
-				context.Background(),
-				"comment",
-				"replies",
-				in.ParentId, // 父评论的snow_cid
-				snowCid,     // 当前回复的snow_cid
-			)
-			// 设置过期时间（30分钟）
-			_ = l.svcCtx.CacheManager.Expire(context.Background(), "comment", "replies", in.ParentId, 1800)
+			if err := l.svcCtx.IncrCommentReplyCount(l.ctx, in.ParentId, 1); err != nil {
+				logx.Errorf("CreateComment incr comment reply count errorx, parentId:%d, err:%v", in.ParentId, err)
+			}
+			// 添加到回复Set（使用rootId作为key）
+			if comment.RootId != 0 {
+				_ = l.svcCtx.CacheManager.SAdd(
+					context.Background(),
+					"comment",
+					"replies",
+					comment.RootId,
+					snowCid,
+				)
+				_ = l.svcCtx.CacheManager.Expire(context.Background(), "comment", "replies", comment.RootId, 1800)
+			}
 		}()
 	}
 
-	// 5. 发送go-queue消息，异步落库
+	// 6. 发送go-queue消息，异步落库
 	if err := l.sendCreateCommentMessage(comment); err != nil {
 		logx.Errorf("CreateComment send queue message errorx, snowCid:%d, err:%v", snowCid, err)
 		go l.recordFailedMessage(comment)
 	}
 
-	// 7. 构建返回的CommentInfo对象
+	// 7. 调用 usercenter RPC 获取用户信息（昵称、头像）
+	var nickname, avatar string
+	userInfoResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{
+		Uid: comment.Uid,
+	})
+	if err != nil {
+		logx.Errorf("CreateComment GetUserInfo RPC errorx, uid:%d, err:%v", comment.Uid, err)
+		// RPC 调用失败不影响主流程，使用默认值
+		nickname = "用户"
+		avatar = ""
+	} else if userInfoResp.Code == 0 && userInfoResp.UserInfo != nil {
+		nickname = userInfoResp.UserInfo.Nickname
+		avatar = userInfoResp.UserInfo.Avatar
+	}
+
+	// 8. 构建返回的CommentInfo对象
 	commentInfo := &pb.CommentInfo{
-		SnowCid:    strconv.FormatInt(snowCid, 10),
-		Tid:        comment.Tid,
+		SnowCid:    snowCid,
+		SnowTid:    comment.SnowTid,
 		Uid:        comment.Uid,
 		ParentId:   comment.ParentId,
 		RootId:     comment.RootId,
 		Content:    comment.Content,
 		LikeCount:  comment.LikeCount,
 		ReplyCount: comment.ReplyCount,
-		Status:     int32(comment.Status),
-		CreateTime: comment.CreateTime.Format("2006-01-02 15:04:05"),
+		CreateTime: comment.CreatedAt,
+		Nickname:   nickname,
+		Avatar:     avatar,
 	}
 
 	return &pb.CreateCommentResp{
+		Code:    0,
+		Msg:     "success",
 		Comment: commentInfo,
 	}, nil
 }
 
-// 简化的send方法
+// sendCreateCommentMessage 发送创建评论消息到Kafka
 func (l *CreateCommentLogic) sendCreateCommentMessage(comment *model.Comment) error {
 	message := map[string]interface{}{
 		"action":      "create_comment",
 		"snow_cid":    comment.SnowCid,
-		"tid":         comment.Tid,
+		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
 		"parent_id":   comment.ParentId,
 		"root_id":     comment.RootId,
 		"content":     comment.Content,
 		"status":      comment.Status,
-		"create_time": comment.CreateTime.Format(time.RFC3339),
+		"created_at":  comment.CreatedAt,
+		"updated_at":  comment.UpdatedAt,
 		"like_count":  comment.LikeCount,
 		"reply_count": comment.ReplyCount,
 	}
@@ -158,19 +184,19 @@ func (l *CreateCommentLogic) sendCreateCommentMessage(comment *model.Comment) er
 	}
 
 	pusher := l.svcCtx.GetPusher("comment_create")
-	return pusher.PushWithKey(l.ctx, strconv.FormatInt(comment.SnowCid, 10), string(body))
+	return pusher.PushWithKey(l.ctx, fmt.Sprintf("%d", comment.SnowCid), string(body))
 }
 
-// 简化的recordFailedMessage
+// recordFailedMessage 记录发送失败的消息
 func (l *CreateCommentLogic) recordFailedMessage(comment *model.Comment) {
 	failedMsg := map[string]interface{}{
 		"snow_cid":    comment.SnowCid,
-		"tid":         comment.Tid,
+		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
 		"parent_id":   comment.ParentId,
 		"root_id":     comment.RootId,
 		"content":     comment.Content,
-		"create_time": comment.CreateTime,
+		"created_at":  comment.CreatedAt,
 		"retry_count": 0,
 		"last_retry":  time.Now().Unix(),
 	}

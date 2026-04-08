@@ -4,7 +4,7 @@
 services:
   #prometheus监控 — Prometheus for monitoring
   prometheus:
-    image: prom/prometheus:v3.5.1
+    image: prom/prometheus:v2.55.1
     container_name: prometheus
     environment:
       # 时区上海 - Time zone Shanghai (Change if needed)
@@ -72,6 +72,7 @@ services:
   #asynqmon asynq延迟队列、定时队列的webui - Asynqmon asynq delay queue, timing queue's webUI
   asynqmon:
     image: hibiken/asynqmon:latest
+    platform: linux/amd64  # Mac ARM64 兼容：使用 x86 模拟
     container_name: asynqmon
     ports:
       - 8980:8080

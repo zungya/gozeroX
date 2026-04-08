@@ -3,8 +3,8 @@ package logic
 import (
 	"context"
 	"gozeroX/app/interactService/model"
+	"gozeroX/app/usercenter/cmd/rpc/usercenter"
 	"sort"
-	"strconv"
 	"sync"
 
 	"gozeroX/app/interactService/cmd/rpc/internal/svc"
@@ -26,101 +26,133 @@ func NewGetCommentsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetCo
 		Logger: logx.WithContext(ctx),
 	}
 }
+
+// GetComments 获取推文的顶级评论列表（使用cursor分页）
 func (l *GetCommentsLogic) GetComments(in *pb.GetCommentsReq) (*pb.GetCommentsResp, error) {
-
-	// 2. 分页参数计算
-	page := in.Page
-	if page < 1 {
-		page = 1
+	// 1. 设置默认limit
+	limit := in.Limit
+	if limit <= 0 || limit > 50 {
+		limit = 20
 	}
-	pageSize := in.PageSize
-	if pageSize < 1 || pageSize > 50 {
-		pageSize = 20
-	}
-	offset := (page - 1) * pageSize
 
-	// 3. 获取该推文的所有顶级评论snow_cid（先缓存后DB）
-	snowCids, err := l.svcCtx.GetTopCommentsByTid(l.ctx, in.Tid)
+	// 2. 获取该推文的所有顶级评论snow_cid（先缓存后DB）
+	snowCids, err := l.svcCtx.GetTopCommentsBySnowTid(l.ctx, in.SnowTid)
 	if err != nil {
-		logx.Errorf("GetComments GetTopCommentsByTid errorx: %v", err)
+		logx.Errorf("GetComments GetTopCommentsBySnowTid errorx: %v", err)
 		return &pb.GetCommentsResp{
+			Code:     0,
+			Msg:      "success",
 			Comments: []*pb.CommentInfo{},
 			Total:    0,
 		}, nil
 	}
 
-	total := int64(len(snowCids))
+	// 3. 批量获取评论详情
+	allComments := l.batchGetComments(snowCids)
 
-	// 4. 批量获取评论详情（部分缓存命中）
-	allComments, missSnowCids := l.batchGetCommentsFromCache(snowCids)
-
-	// 5. 对缺失的评论，从数据库补充
-	if len(missSnowCids) > 0 {
-		dbComments, err := l.svcCtx.CommentModel.FindBatchBySnowCids(l.ctx, missSnowCids)
-		if err != nil {
-			logx.Errorf("GetComments FindBatchBySnowCids errorx: %v", err)
-		} else {
-			// 过滤有效评论
-			validDBComments := make([]*model.Comment, 0, len(dbComments))
-			for _, c := range dbComments {
-				if c.Status == 0 {
-					validDBComments = append(validDBComments, c)
-				}
-			}
-			allComments = append(allComments, validDBComments...)
-
-			// 异步回写缓存
-			go func() {
-				for _, c := range validDBComments {
-					_ = l.svcCtx.SetCommentToCache(context.Background(), c.SnowCid, c)
-				}
-			}()
+	// 4. 过滤有效评论（status=0）并排序
+	validComments := make([]*model.Comment, 0, len(allComments))
+	for _, c := range allComments {
+		if c.Status == 0 {
+			validComments = append(validComments, c)
 		}
 	}
 
-	// 6. 排序
-	l.sortComments(allComments, in.Sort)
+	// 5. 排序（sort: 0-综合排序, 1-按时间倒序）
+	l.sortComments(validComments, in.Sort)
 
-	// 7. 分页
+	total := int64(len(validComments))
+
+	// 6. cursor分页
 	var pageComments []*model.Comment
-	if offset < total { // 将offset转为int64进行比较
-		end := offset + pageSize
-		if end > total { // 将end转为int64进行比较
-			end = total // 这里需要转回int
+	if in.Cursor == 0 {
+		// 第一次请求
+		if total > limit {
+			pageComments = validComments[:limit]
+		} else {
+			pageComments = validComments
 		}
-		pageComments = allComments[offset:end]
+	} else {
+		// 后续请求，找到cursor位置
+		startIdx := -1
+		for i, c := range validComments {
+			if c.CreatedAt < in.Cursor {
+				startIdx = i
+				break
+			}
+		}
+		if startIdx >= 0 {
+			end := startIdx + int(limit)
+			if end > len(validComments) {
+				end = len(validComments)
+			}
+			pageComments = validComments[startIdx:end]
+		}
+	}
+
+	// 7. 批量获取用户信息
+	uidMap := make(map[int64]bool)
+	for _, c := range pageComments {
+		uidMap[c.Uid] = true
+	}
+	uids := make([]int64, 0, len(uidMap))
+	for uid := range uidMap {
+		uids = append(uids, uid)
+	}
+
+	userBriefMap := make(map[int64]*usercenter.UserBrief)
+	if len(uids) > 0 {
+		userBriefResp, err := l.svcCtx.UserCenterRpc.BatchGetUserBrief(l.ctx, &usercenter.BatchUserBriefReq{
+			Uids: uids,
+		})
+		if err != nil {
+			logx.Errorf("GetComments BatchGetUserBrief RPC errorx: %v", err)
+		} else if userBriefResp.Code == 0 {
+			for _, u := range userBriefResp.Users {
+				userBriefMap[u.Uid] = u
+			}
+		}
 	}
 
 	// 8. 转换为PB返回格式
 	commentInfos := make([]*pb.CommentInfo, 0, len(pageComments))
 	for _, c := range pageComments {
+		nickname := "用户"
+		avatar := ""
+		if user, ok := userBriefMap[c.Uid]; ok {
+			nickname = user.Nickname
+			avatar = user.Avatar
+		}
+
 		commentInfos = append(commentInfos, &pb.CommentInfo{
-			SnowCid:    strconv.FormatInt(c.SnowCid, 10),
-			Tid:        c.Tid,
+			SnowCid:    c.SnowCid,
+			SnowTid:    c.SnowTid,
 			Uid:        c.Uid,
 			ParentId:   c.ParentId,
 			RootId:     c.RootId,
 			Content:    c.Content,
 			LikeCount:  c.LikeCount,
 			ReplyCount: c.ReplyCount,
-			Status:     int32(c.Status),
-			CreateTime: c.CreateTime.Format("2006-01-02 15:04:05"),
+			CreateTime: c.CreatedAt,
+			Nickname:   nickname,
+			Avatar:     avatar,
 		})
 	}
 
-	logx.Infof("GetComments success, tid:%d, page:%d, pageSize:%d, total:%d, return:%d",
-		in.Tid, page, pageSize, total, len(commentInfos))
+	logx.Infof("GetComments success, snowTid:%d, limit:%d, total:%d, return:%d",
+		in.SnowTid, limit, total, len(commentInfos))
 
 	return &pb.GetCommentsResp{
+		Code:     0,
+		Msg:      "success",
 		Comments: commentInfos,
 		Total:    total,
 	}, nil
 }
 
-func (l *GetCommentsLogic) batchGetCommentsFromCache(snowCids []int64) ([]*model.Comment, []int64) {
-	cacheComments := make([]*model.Comment, 0, len(snowCids))
-	missIDs := make([]int64, 0)
-
+// batchGetComments 批量获取评论（先缓存后DB）
+func (l *GetCommentsLogic) batchGetComments(snowCids []int64) []*model.Comment {
+	result := make([]*model.Comment, 0, len(snowCids))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 20) // 限制并发
@@ -128,48 +160,39 @@ func (l *GetCommentsLogic) batchGetCommentsFromCache(snowCids []int64) ([]*model
 	for _, snowCid := range snowCids {
 		sem <- struct{}{}
 		wg.Add(1)
-		go func(snowCid int64) {
+		go func(cid int64) {
 			defer func() {
 				wg.Done()
 				<-sem
 			}()
 
-			// 使用svc层的通用方法
-			comment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, snowCid)
+			comment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, cid)
 			if err != nil {
-				mu.Lock()
-				missIDs = append(missIDs, snowCid)
-				mu.Unlock()
 				return
 			}
 
-			if comment.Status == 0 {
-				mu.Lock()
-				cacheComments = append(cacheComments, comment)
-				mu.Unlock()
-			}
+			mu.Lock()
+			result = append(result, comment)
+			mu.Unlock()
 		}(snowCid)
 	}
 
 	wg.Wait()
-	return cacheComments, missIDs
+	return result
 }
 
-// 3. sortComments 评论排序方法
-func (l *GetCommentsLogic) sortComments(comments []*model.Comment, sortType string) {
+// sortComments 评论排序方法
+func (l *GetCommentsLogic) sortComments(comments []*model.Comment, sortType int64) {
 	switch sortType {
-	case "hot":
-		// 热门排序：按点赞数降序，点赞数相同按创建时间降序
+	case 0, 1:
+		// 按创建时间倒序（最新的）
 		sort.Slice(comments, func(i, j int) bool {
-			if comments[i].LikeCount == comments[j].LikeCount {
-				return comments[i].CreateTime.After(comments[j].CreateTime)
-			}
-			return comments[i].LikeCount > comments[j].LikeCount
+			return comments[i].CreatedAt > comments[j].CreatedAt
 		})
-	case "new", "": // 默认最新排序
-		// 最新排序：按创建时间降序
+	default:
+		// 默认按创建时间倒序
 		sort.Slice(comments, func(i, j int) bool {
-			return comments[i].CreateTime.After(comments[j].CreateTime)
+			return comments[i].CreatedAt > comments[j].CreatedAt
 		})
 	}
 }

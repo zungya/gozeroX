@@ -27,4 +27,6 @@ type Config struct {
 		Group  string
 		Topics []string
 	} `json:",optional"`
+
+	UserCenterRpcConf zrpc.RpcClientConf
 }
