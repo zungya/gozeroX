@@ -1,0 +1,33 @@
+Name: usercenter-rpc
+ListenOn: 0.0.0.0:2001
+Mode: dev
+
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4002
+  Path: /metrics
+
+RedisConf:
+  Host: localhost:36379
+  Type: node
+  Pass: mTRT1XBhk9VgWb9n
+
+DB:
+  DataSource: postgres://postgres:mTRT1XBhk9VgWb9n@localhost:54329/gozerox_db?sslmode=disable
+
+Cache:
+  - Host: localhost:36379
+    Pass: mTRT1XBhk9VgWb9n
+    Type: node
+
+Log:
+  ServiceName: usercenter-rpc
+  Mode: console
+  Level: info
+  Path: logs
+  KeepDays: 7
+  StackCooldownMillis: 100
+
+Jwt:
+  AccessSecret: "a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1"
+  AccessExpire: 86400

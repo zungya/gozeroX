@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recommendservice-rpc-config
+  namespace: gozerox
+data:
+  service.yaml: |
+    Name: recommendService-rpc
+    ListenOn: 0.0.0.0:2005
+    Mode: dev
+    Timeout: 15000
+
+    Prometheus:
+      Host: 0.0.0.0
+      Port: 4012
+      Path: /metrics
+
+    PythonRecommend:
+      RecallUrl: http://localhost:2006/api/v1/recall
+
+    ContentServiceRpcConf:
+      Endpoints:
+        - contentservice-rpc:2002
+      NonBlock: true
+
+    RedisConf:
+      Host: redis:6379
+      Pass: mTRT1XBhk9VgWb9n
+      Type: node
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendservice-rpc
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendservice-rpc
+  template:
+    metadata:
+      labels:
+        app: recommendservice-rpc
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: recommendservice-rpc
+        image: gozerox/recommendservice-rpc:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2005
+        - containerPort: 4012
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: recommendservice-rpc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendservice-rpc
+  namespace: gozerox
+spec:
+  selector:
+    app: recommendservice-rpc
+  ports:
+  - name: grpc
+    port: 2005
+    targetPort: 2005
+  - name: metrics
+    port: 4012
+    targetPort: 4012

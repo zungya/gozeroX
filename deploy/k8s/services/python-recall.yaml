@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-recall-config
+  namespace: gozerox
+data:
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "mTRT1XBhk9VgWb9n"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-recall
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-recall
+  template:
+    metadata:
+      labels:
+        app: python-recall
+    spec:
+      containers:
+      - name: python-recall
+        image: gozerox/python-recall:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2006
+        - containerPort: 4013
+        envFrom:
+        - configMapRef:
+            name: python-recall-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-recall
+  namespace: gozerox
+spec:
+  selector:
+    app: python-recall
+  ports:
+  - name: http
+    port: 2006
+    targetPort: 2006
+  - name: metrics
+    port: 4013
+    targetPort: 4013

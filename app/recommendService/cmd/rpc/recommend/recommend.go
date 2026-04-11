@@ -1,0 +1,47 @@
+package recommend
+
+import (
+	"context"
+
+	"gozeroX/app/recommendService/cmd/rpc/pb"
+
+	"github.com/zeromicro/go-zero/zrpc"
+	"google.golang.org/grpc"
+)
+
+type (
+	RecommendFeedReq    = pb.RecommendFeedReq
+	RecommendFeedResp   = pb.RecommendFeedResp
+	SearchRecommendReq  = pb.SearchRecommendReq
+	SearchRecommendResp = pb.SearchRecommendResp
+	TweetInfo           = pb.TweetInfo
+
+	Recommend interface {
+		// 推荐首页 Feed
+		RecommendFeed(ctx context.Context, in *RecommendFeedReq, opts ...grpc.CallOption) (*RecommendFeedResp, error)
+		// 搜索推荐（预留）
+		SearchRecommend(ctx context.Context, in *SearchRecommendReq, opts ...grpc.CallOption) (*SearchRecommendResp, error)
+	}
+
+	defaultRecommend struct {
+		cli zrpc.Client
+	}
+)
+
+func NewRecommend(cli zrpc.Client) Recommend {
+	return &defaultRecommend{
+		cli: cli,
+	}
+}
+
+// 推荐首页 Feed
+func (m *defaultRecommend) RecommendFeed(ctx context.Context, in *RecommendFeedReq, opts ...grpc.CallOption) (*RecommendFeedResp, error) {
+	client := pb.NewRecommendClient(m.cli.Conn())
+	return client.RecommendFeed(ctx, in, opts...)
+}
+
+// 搜索推荐（预留）
+func (m *defaultRecommend) SearchRecommend(ctx context.Context, in *SearchRecommendReq, opts ...grpc.CallOption) (*SearchRecommendResp, error) {
+	client := pb.NewRecommendClient(m.cli.Conn())
+	return client.SearchRecommend(ctx, in, opts...)
+}

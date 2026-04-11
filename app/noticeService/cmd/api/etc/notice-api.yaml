@@ -1,0 +1,23 @@
+Name: notice-api
+Host: 0.0.0.0
+Port: 1004
+Mode: dev
+
+JwtAuth:
+  AccessSecret: "a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1"
+  AccessExpire: 86400
+
+NoticeServiceRpcConf:
+  Endpoints:
+    - 127.0.0.1:2004
+  NonBlock: true
+
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4008
+  Path: /metrics
+
+Log:
+  ServiceName: notice-api
+  Mode: console
+  Level: info

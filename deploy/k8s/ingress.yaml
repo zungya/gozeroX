@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gozerox-gateway
+  namespace: gozerox
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /usercenter/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: usercenter-api
+            port:
+              number: 1001
+      - path: /contentService/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: contentservice-api
+            port:
+              number: 1002
+      - path: /interactService/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: interactservice-api
+            port:
+              number: 1003
+      - path: /noticeService/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: noticeservice-api
+            port:
+              number: 1004
+      - path: /recommendService/v1(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: recommendservice-api
+            port:
+              number: 1005

@@ -1,0 +1,38 @@
+Name: contentService-rpc
+ListenOn: 0.0.0.0:2002
+Mode: dev
+
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4004
+  Path: /metrics
+
+RedisConf:
+  Host: localhost:36379
+  Type: node
+  Pass: mTRT1XBhk9VgWb9n
+
+DB:
+  DataSource: postgres://postgres:mTRT1XBhk9VgWb9n@localhost:54329/gozerox_db?sslmode=disable
+
+Cache:
+  - Host: localhost:36379
+    Pass: mTRT1XBhk9VgWb9n
+    Type: node
+
+Kafka:
+  Addrs:
+    - localhost:9094
+
+Log:
+  ServiceName: contentService-rpc
+  Mode: console
+  Level: info
+  Path: logs
+  KeepDays: 7
+  StackCooldownMillis: 100
+
+UserCenterRpcConf:
+  Endpoints:
+    - 127.0.0.1:2001
+  NonBlock: true

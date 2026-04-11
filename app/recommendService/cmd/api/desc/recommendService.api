@@ -1,0 +1,48 @@
+syntax = "v1"
+
+info (
+	title:  "社交APP推荐微服务"
+	desc:   "推荐系统API，提供个性化推荐Feed流"
+	author: "xxx"
+	email:  "xxx@163.com"
+)
+
+type (
+	// 推文展示信息
+	TweetInfo {
+		SnowTid      int64    `json:"snowTid,string"`
+		Uid          int64    `json:"uid"`
+		Content      string   `json:"content"`
+		MediaUrls    []string `json:"mediaUrls"`
+		Tags         []string `json:"tags"`
+		LikeCount    int64    `json:"likeCount"`
+		CommentCount int64    `json:"commentCount"`
+		CreatedAt    int64    `json:"createdAt"`
+		Nickname     string   `json:"nickname"`
+		Avatar       string   `json:"avatar"`
+	}
+	// 推荐Feed请求（uid 从 JWT 获取）
+	RecommendFeedReq {
+		Limit  int64 `form:"limit,default=8"`
+		Cursor int64 `form:"cursor,optional"`
+	}
+	RecommendFeedResp {
+		Code    int64       `json:"code"`
+		Msg     string      `json:"msg"`
+		Data    []TweetInfo `json:"data"`
+		Cursor  int64       `json:"cursor"`
+		HasMore bool        `json:"hasMore"`
+	}
+)
+
+@server (
+	prefix: /recommendService/v1
+	group:  recommend
+	jwt:    Auth
+)
+service recommend-api {
+	// 获取推荐Feed
+	@handler feed
+	get /feed (RecommendFeedReq) returns (RecommendFeedResp)
+}
+

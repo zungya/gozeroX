@@ -1,0 +1,37 @@
+Name: interact-mq
+Mode: dev
+
+# PostgreSQL
+DB:
+  DataSource: "postgres://postgres:mTRT1XBhk9VgWb9n@localhost:54329/gozerox_db?sslmode=disable"
+
+# Redis
+Redis:
+  Host: localhost:36379
+  Pass: mTRT1XBhk9VgWb9n
+  Type: node
+
+Cache:
+  - Host: localhost:36379
+    Pass: mTRT1XBhk9VgWb9n
+
+# Kafka
+Kafka:
+  Brokers:
+    - localhost:9094
+  CommentTopic: comment_create
+  LikeTweetTopic: like_tweet
+  LikeCommentTopic: like_comment
+  Group: interact-mq
+
+# Prometheus
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4007
+  Path: /metrics
+
+# ContentService RPC
+ContentServiceRpcConf:
+  Endpoints:
+    - 127.0.0.1:2002
+  NonBlock: true

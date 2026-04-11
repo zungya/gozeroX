@@ -1,0 +1,26 @@
+Name: notice-mq
+Mode: dev
+
+DB:
+  DataSource: "postgres://postgres:mTRT1XBhk9VgWb9n@postgresql:5432/gozerox_db?sslmode=disable"
+
+Redis:
+  Host: redis:6379
+  Pass: mTRT1XBhk9VgWb9n
+  Type: node
+
+Cache:
+  - Host: redis:6379
+    Pass: mTRT1XBhk9VgWb9n
+
+Kafka:
+  Brokers:
+    - kafka:9092
+  NoticeTopic: notice
+  Group: notice-mq
+
+# Prometheus
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4010
+  Path: /metrics

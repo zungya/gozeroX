@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentservice-rpc-config
+  namespace: gozerox
+data:
+  service.yaml: |
+    Name: contentService-rpc
+    ListenOn: 0.0.0.0:2002
+    Mode: dev
+
+    Prometheus:
+      Host: 0.0.0.0
+      Port: 4004
+      Path: /metrics
+
+    RedisConf:
+      Host: redis:6379
+      Pass: mTRT1XBhk9VgWb9n
+      Type: node
+
+    DB:
+      DataSource: postgres://postgres:mTRT1XBhk9VgWb9n@postgresql:5432/gozerox_db?sslmode=disable
+
+    Cache:
+      - Host: redis:6379
+        Pass: mTRT1XBhk9VgWb9n
+        Type: node
+
+    UserCenterRpcConf:
+      Endpoints:
+        - usercenter-rpc:2001
+      NonBlock: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentservice-rpc
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contentservice-rpc
+  template:
+    metadata:
+      labels:
+        app: contentservice-rpc
+    spec:
+      containers:
+      - name: contentservice-rpc
+        image: gozerox/contentservice-rpc:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2002
+        - containerPort: 4004
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: contentservice-rpc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contentservice-rpc
+  namespace: gozerox
+spec:
+  selector:
+    app: contentservice-rpc
+  ports:
+  - name: grpc
+    port: 2002
+    targetPort: 2002
+  - name: metrics
+    port: 4004
+    targetPort: 4004

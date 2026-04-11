@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+package pb;
+
+// ==================== 点赞通知 ====================
+message NoticeLikeInfo {
+  int64 snow_nid = 1;
+  int64 target_type = 2;       // 0=推文点赞, 1=评论点赞
+  int64 target_id = 3;
+  int64 snow_tid = 4;
+  int64 root_id = 5;
+  int64 recent_uid_1 = 6;
+  int64 recent_uid_2 = 7;
+  int64 uid = 8;               // 通知接收者
+  int64 total_count = 9;
+  int64 recent_count = 17;    // 自上次查看以来的新增点赞数
+  int64 is_read = 10;
+  int64 created_at = 11;
+  int64 updated_at = 12;
+
+  // 以下字段通过 usercenter RPC 按需获取
+  string recent_nickname_1 = 13;
+  string recent_avatar_1 = 14;
+  string recent_nickname_2 = 15;
+  string recent_avatar_2 = 16;
+}
+
+// ==================== 评论通知 ====================
+message NoticeCommentInfo {
+  int64 snow_nid = 1;
+  int64 target_type = 2;       // 0=推文评论, 1=评论回复
+  int64 commenter_uid = 3;
+  int64 uid = 4;               // 通知接收者
+  int64 snow_tid = 5;
+  int64 snow_cid = 6;
+  int64 root_id = 7;
+  int64 parent_id = 8;
+  string content = 9;
+  string replied_content = 10;
+  int64 is_read = 11;
+  int64 created_at = 12;
+  int64 updated_at = 13;
+
+  // 通过 usercenter RPC 按需获取
+  string commenter_nickname = 14;
+  string commenter_avatar = 15;
+}
+
+// ==================== 获取通知列表 ====================
+message GetNoticesReq {
+  int64 uid = 1;
+  int64 cursor = 2;            // 游标：上次最后一条的updated_at，首次传0
+  int64 limit = 3;             // 每页条数，默认20
+}
+
+message GetNoticesResp {
+  int64 code = 1;
+  string msg = 2;
+  repeated NoticeLikeInfo like_notices = 3;
+  repeated NoticeCommentInfo comment_notices = 4;
+  int64 unread_count = 5;      // 总未读数
+}
+
+// ==================== 获取未读数 ====================
+message GetUnreadCountReq {
+  int64 uid = 1;
+}
+
+message GetUnreadCountResp {
+  int64 code = 1;
+  string msg = 2;
+  int64 like_unread = 3;
+  int64 comment_unread = 4;
+  int64 total_unread = 5;
+}
+
+// ==================== 标记已读 ====================
+message MarkReadReq {
+  int64 uid = 1;
+  int64 notice_type = 2;      // 0=全部, 1=点赞通知, 2=评论通知
+}
+
+message MarkReadResp {
+  int64 code = 1;
+  string msg = 2;
+}
+
+// ==================== RPC 服务定义 ====================
+service Notice {
+  // 获取通知列表（点赞+评论混合）
+  rpc GetNotices(GetNoticesReq) returns (GetNoticesResp);
+  // 获取未读通知数
+  rpc GetUnreadCount(GetUnreadCountReq) returns (GetUnreadCountResp);
+  // 标记通知已读
+  rpc MarkRead(MarkReadReq) returns (MarkReadResp);
+}

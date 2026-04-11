@@ -1,0 +1,30 @@
+Name: noticeService-rpc
+ListenOn: 0.0.0.0:2004
+Mode: dev
+
+DB:
+  DataSource: "postgres://postgres:mTRT1XBhk9VgWb9n@postgresql:5432/gozerox_db?sslmode=disable"
+
+RedisConf:
+  Host: redis:6379
+  Pass: mTRT1XBhk9VgWb9n
+  Type: node
+
+Cache:
+  - Host: redis:6379
+    Pass: mTRT1XBhk9VgWb9n
+
+UserCenterRpcConf:
+  Endpoints:
+    - 127.0.0.1:2001
+  NonBlock: true
+
+Prometheus:
+  Host: 0.0.0.0
+  Port: 4009
+  Path: /metrics
+
+Log:
+  ServiceName: noticeService-rpc
+  Mode: console
+  Level: info

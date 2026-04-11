@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recommendservice-api-config
+  namespace: gozerox
+data:
+  service.yaml: |
+    Name: recommend-api
+    Host: 0.0.0.0
+    Port: 1005
+    Mode: dev
+
+    Prometheus:
+      Host: 0.0.0.0
+      Port: 4011
+      Path: /metrics
+
+    RecommendRpcConf:
+      Endpoints:
+        - recommendservice-rpc:2005
+      NonBlock: true
+      Timeout: 15000
+
+    Auth:
+      AccessSecret: a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1
+      AccessExpire: 86400
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendservice-api
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendservice-api
+  template:
+    metadata:
+      labels:
+        app: recommendservice-api
+    spec:
+      containers:
+      - name: recommendservice-api
+        image: gozerox/recommendservice-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1005
+        - containerPort: 4011
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: recommendservice-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendservice-api
+  namespace: gozerox
+spec:
+  selector:
+    app: recommendservice-api
+  ports:
+  - name: http
+    port: 1005
+    targetPort: 1005
+  - name: metrics
+    port: 4011
+    targetPort: 4011

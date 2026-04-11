@@ -1,0 +1,15 @@
+.git
+.idea
+.DS_Store
+data/
+deploy/
+doc/
+*.md
+!go.work
+!go.work.sum
+start-local.sh
+stop-local.sh
+test.sh
+build-images.sh
+.claude/
+private/

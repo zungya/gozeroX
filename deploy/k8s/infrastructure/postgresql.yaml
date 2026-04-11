@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-init-sql
+  namespace: gozerox
+data:
+  # Init SQL scripts should be mounted here.
+  # Apply the SQL files from deploy/script/postgre/init/ manually or via a Job.
+  placeholder: ""
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: gozerox
+  labels:
+    app: postgresql
+spec:
+  serviceName: postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-redis-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: "gozerox_db"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: TZ
+              value: "Asia/Shanghai"
+          volumeMounts:
+            - name: postgresql-data
+              mountPath: /var/lib/postgresql/data
+            # Init scripts: mount ConfigMap or use an init container to apply SQL manually.
+            # Uncomment below after creating the ConfigMap with init SQL files:
+            # - name: init-sql
+            #   mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      # volumes:
+      #   - name: init-sql
+      #     configMap:
+      #       name: postgresql-init-sql
+  volumeClaimTemplates:
+    - metadata:
+        name: postgresql-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: gozerox
+  labels:
+    app: postgresql
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgresql
+  selector:
+    app: postgresql

@@ -1,0 +1,70 @@
+package types
+
+// ==================== 点赞通知 ====================
+type NoticeLikeItem struct {
+	SnowNid         int64  `json:"snowNid,string"`
+	TargetType      int64  `json:"targetType"`
+	TargetId        int64  `json:"targetId,string"`
+	SnowTid         int64  `json:"snowTid,string"`
+	RootId          int64  `json:"rootId,string"`
+	RecentUid1      int64  `json:"recentUid1"`
+	RecentUid2      int64  `json:"recentUid2"`
+	TotalCount      int64  `json:"totalCount"`
+	RecentCount     int64  `json:"recentCount"`
+	IsRead          int64  `json:"isRead"`
+	UpdatedAt       int64  `json:"updatedAt"`
+	RecentNickname1 string `json:"recentNickname1"`
+	RecentAvatar1   string `json:"recentAvatar1"`
+	RecentNickname2 string `json:"recentNickname2"`
+	RecentAvatar2   string `json:"recentAvatar2"`
+}
+
+// ==================== 评论通知 ====================
+type NoticeCommentItem struct {
+	SnowNid           int64  `json:"snowNid,string"`
+	TargetType        int64  `json:"targetType"`
+	CommenterUid      int64  `json:"commenterUid"`
+	SnowTid           int64  `json:"snowTid,string"`
+	SnowCid           int64  `json:"snowCid,string"`
+	RootId            int64  `json:"rootId,string"`
+	ParentId          int64  `json:"parentId,string"`
+	Content           string `json:"content"`
+	RepliedContent    string `json:"repliedContent"`
+	IsRead            int64  `json:"isRead"`
+	CreatedAt         int64  `json:"createdAt"`
+	CommenterNickname string `json:"commenterNickname"`
+	CommenterAvatar   string `json:"commenterAvatar"`
+}
+
+// ==================== 获取通知列表 ====================
+type GetNoticesReq struct {
+	Cursor int64 `form:"cursor,optional"`
+	Limit  int64 `form:"limit,default=20"`
+}
+
+type GetNoticesResp struct {
+	Code           int                 `json:"code"`
+	Message        string              `json:"message"`
+	LikeNotices    []NoticeLikeItem    `json:"likeNotices"`
+	CommentNotices []NoticeCommentItem `json:"commentNotices"`
+	UnreadCount    int64               `json:"unreadCount"`
+}
+
+// ==================== 获取未读数 ====================
+type GetUnreadCountResp struct {
+	Code          int    `json:"code"`
+	Message       string `json:"message"`
+	LikeUnread    int64  `json:"likeUnread"`
+	CommentUnread int64  `json:"commentUnread"`
+	TotalUnread   int64  `json:"totalUnread"`
+}
+
+// ==================== 标记已读 ====================
+type MarkReadReq struct {
+	NoticeType int64 `json:"noticeType"`
+}
+
+type MarkReadResp struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}

@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noticeservice-api-config
+  namespace: gozerox
+data:
+  service.yaml: |
+    Name: notice-api
+    Host: 0.0.0.0
+    Port: 1004
+    Mode: dev
+
+    Prometheus:
+      Host: 0.0.0.0
+      Port: 4008
+      Path: /metrics
+
+    NoticeServiceRpcConf:
+      Endpoints:
+        - noticeservice-rpc:2004
+      NonBlock: true
+
+    JwtAuth:
+      AccessSecret: a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1
+      AccessExpire: 86400
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noticeservice-api
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: noticeservice-api
+  template:
+    metadata:
+      labels:
+        app: noticeservice-api
+    spec:
+      containers:
+      - name: noticeservice-api
+        image: gozerox/noticeservice-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1004
+        - containerPort: 4008
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: noticeservice-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noticeservice-api
+  namespace: gozerox
+spec:
+  selector:
+    app: noticeservice-api
+  ports:
+  - name: http
+    port: 1004
+    targetPort: 1004
+  - name: metrics
+    port: 4008
+    targetPort: 4008

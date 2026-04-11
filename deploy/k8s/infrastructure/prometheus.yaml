@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: gozerox
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      # usercenter
+      - job_name: "usercenter-api"
+        static_configs:
+          - targets: ["usercenter-api.gozerox.svc.cluster.local:4001"]
+
+      - job_name: "usercenter-rpc"
+        static_configs:
+          - targets: ["usercenter-rpc.gozerox.svc.cluster.local:4002"]
+
+      # contentservice
+      - job_name: "contentservice-api"
+        static_configs:
+          - targets: ["contentservice-api.gozerox.svc.cluster.local:4003"]
+
+      - job_name: "contentservice-rpc"
+        static_configs:
+          - targets: ["contentservice-rpc.gozerox.svc.cluster.local:4004"]
+
+      # interactservice
+      - job_name: "interactservice-api"
+        static_configs:
+          - targets: ["interactservice-api.gozerox.svc.cluster.local:4005"]
+
+      - job_name: "interactservice-rpc"
+        static_configs:
+          - targets: ["interactservice-rpc.gozerox.svc.cluster.local:4006"]
+
+      - job_name: "interactservice-mq"
+        static_configs:
+          - targets: ["interactservice-mq.gozerox.svc.cluster.local:4007"]
+
+      # noticeservice
+      - job_name: "noticeservice-api"
+        static_configs:
+          - targets: ["noticeservice-api.gozerox.svc.cluster.local:4008"]
+
+      - job_name: "noticeservice-rpc"
+        static_configs:
+          - targets: ["noticeservice-rpc.gozerox.svc.cluster.local:4009"]
+
+      - job_name: "noticeservice-mq"
+        static_configs:
+          - targets: ["noticeservice-mq.gozerox.svc.cluster.local:4010"]
+
+      # recommendservice
+      - job_name: "recommendservice-api"
+        static_configs:
+          - targets: ["recommendservice-api.gozerox.svc.cluster.local:4011"]
+
+      - job_name: "recommendservice-rpc"
+        static_configs:
+          - targets: ["recommendservice-rpc.gozerox.svc.cluster.local:4012"]
+
+      # python-recall
+      - job_name: "python-recall"
+        static_configs:
+          - targets: ["python-recall.gozerox.svc.cluster.local:4013"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: gozerox
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: gozerox
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.55.1
+          ports:
+            - containerPort: 9090
+              name: prometheus
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+            - name: prometheus-data
+              mountPath: /prometheus
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: gozerox
+  labels:
+    app: prometheus
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+      name: prometheus
+  selector:
+    app: prometheus

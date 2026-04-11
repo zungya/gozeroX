@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentservice-api-config
+  namespace: gozerox
+data:
+  service.yaml: |
+    Name: content-api
+    Host: 0.0.0.0
+    Port: 1002
+    Mode: dev
+
+    Prometheus:
+      Host: 0.0.0.0
+      Port: 4003
+      Path: /metrics
+
+    ContentServiceRpcConf:
+      Endpoints:
+        - contentservice-rpc:2002
+      NonBlock: true
+
+    JwtAuth:
+      AccessSecret: a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1
+      AccessExpire: 86400
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentservice-api
+  namespace: gozerox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contentservice-api
+  template:
+    metadata:
+      labels:
+        app: contentservice-api
+    spec:
+      containers:
+      - name: contentservice-api
+        image: gozerox/contentservice-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1002
+        - containerPort: 4003
+        volumeMounts:
+        - name: config
+          mountPath: /app/etc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: contentservice-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contentservice-api
+  namespace: gozerox
+spec:
+  selector:
+    app: contentservice-api
+  ports:
+  - name: http
+    port: 1002
+    targetPort: 1002
+  - name: metrics
+    port: 4003
+    targetPort: 4003

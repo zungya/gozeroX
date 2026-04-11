@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+package pb;
+
+// ========== 推荐首页 Feed ==========
+message RecommendFeedReq {
+  int64 uid = 1;
+  int64 limit = 2;
+  int64 cursor = 3;
+}
+
+message RecommendFeedResp {
+  int64 code = 1;
+  string msg = 2;
+  repeated TweetInfo tweets = 3;
+  int64 cursor = 4;
+  bool has_more = 5;
+}
+
+// ========== 推文展示信息（从 contentService 获取后填充） ==========
+message TweetInfo {
+  int64 snow_tid = 1;
+  int64 uid = 2;
+  string content = 3;
+  repeated string media_urls = 4;
+  repeated string tags = 5;
+  int64 like_count = 6;
+  int64 comment_count = 7;
+  int64 created_at = 8;
+  string nickname = 9;
+  string avatar = 10;
+}
+
+// ========== 搜索推荐（预留） ==========
+message SearchRecommendReq {
+  int64 uid = 1;
+  string keyword = 2;
+  int64 limit = 3;
+  int64 cursor = 4;
+}
+
+message SearchRecommendResp {
+  int64 code = 1;
+  string msg = 2;
+  repeated TweetInfo tweets = 3;
+  int64 cursor = 4;
+  bool has_more = 5;
+}
+
+// ========== RPC 服务定义 ==========
+service Recommend {
+  // 推荐首页 Feed
+  rpc RecommendFeed(RecommendFeedReq) returns (RecommendFeedResp);
+  // 搜索推荐（预留）
+  rpc SearchRecommend(SearchRecommendReq) returns (SearchRecommendResp);
+}
