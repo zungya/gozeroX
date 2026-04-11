@@ -1,4 +1,4 @@
--- 04_create_tables_content.sql
+-- 03_create_tables_content.sql
 -- 功能：创建内容服务核心表（推文表 + 统计变更日志表）
 -- 执行前确保已在 gozerox_db 中
 

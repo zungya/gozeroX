@@ -12,7 +12,7 @@ type Config struct {
 		DataSource string
 	}
 
-	Redis struct {
+	RedisConf struct {
 		Host      string
 		Pass      string
 		Type      string

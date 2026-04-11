@@ -55,16 +55,18 @@
                     │     Redis       │
                     │     Kafka       │
                     └─────────────────┘
+noticeService和recommendService暂时没有写到上面
 ```
 
 ### 服务说明
 
-| 服务 | 职责 | API 端口 | RPC 端口 |
-|------|------|----------|----------|
-| usercenter | 用户注册、登录、信息管理 | 8001 | 9001 |
-| contentService | 推文创建、查询、删除 | 8002 | 9002 |
-| interactService | 评论、点赞、互动 | 8003 | 9003 |
-
+| 服务               | 职责           | API 端口 | RPC 端口 |
+|------------------|--------------|--------|--------|
+| usercenter       | 用户注册、登录、信息管理 | 1001   | 2001   |
+| contentService   | 推文创建、查询、删除   | 1002   | 2002   |
+| interactService  | 评论、点赞、互动     | 1003   | 2003   |
+| noticeService    | 通知生成与存储      | 1004   | 2004   |
+| recommendService | 推荐、搜索（先只写推荐） | 1005   | 2005   |
 ### 每个服务的分层结构
 
 ```
@@ -386,6 +388,33 @@ docker ps
 docker compose -f docker-compose-env.yml logs -f redis
 ```
 
+### 本地测试须知
+
+**RPC 服务必须使用 `-local.yaml` 配置文件，API 服务使用默认配置文件。**
+
+原因：默认 YAML 配置中的 Redis/PostgreSQL 地址是 Docker 内部主机名（`redis:6379`、`postgresql:5432`），本地运行无法解析。`-local.yaml` 使用 `localhost` + 映射端口（`localhost:36379`、`localhost:54329`）。API 层不直连 Redis/Kafka，只连 RPC，所以用默认配置即可。
+
+```bash
+# ✅ 正确：RPC 用 -local.yaml
+go run app/usercenter/cmd/rpc/usercenter.go -f app/usercenter/cmd/rpc/etc/usercenter-local.yaml
+go run app/contentService/cmd/rpc/contentservice.go -f app/contentService/cmd/rpc/etc/contentservice-local.yaml
+go run app/interactService/cmd/rpc/interactservice.go -f app/interactService/cmd/rpc/etc/interactservice-local.yaml
+go run app/noticeService/cmd/rpc/notice.go -f app/noticeService/cmd/rpc/etc/noticeservice-local.yaml
+go run app/recommendService/cmd/rpc/recommendservice.go -f app/recommendService/cmd/rpc/etc/recommendservice-local.yaml
+
+# ✅ 正确：API 用默认 yaml
+go run app/usercenter/cmd/api/usercenter.go -f app/usercenter/cmd/api/etc/usercenter.yaml
+go run app/contentService/cmd/api/content.go -f app/contentService/cmd/api/etc/content-api.yaml
+go run app/interactService/cmd/api/interaction.go -f app/interactService/cmd/api/etc/interaction-api.yaml
+go run app/noticeService/cmd/api/notice.go -f app/noticeService/cmd/api/etc/notice-api.yaml
+go run app/recommendService/cmd/api/recommend.go -f app/recommendService/cmd/api/etc/recommend-api.yaml
+```
+
+| 配置文件 | 用途 | 地址 |
+|---------|------|------|
+| `*-local.yaml` | RPC 本地开发 | Redis `localhost:36379`, PostgreSQL `localhost:54329` |
+| 默认 `*.yaml` | Docker 容器 / API 层 | Redis `redis:6379`, PostgreSQL `postgresql:5432` |
+
 ### Go 开发
 
 ```bash
@@ -393,14 +422,14 @@ docker compose -f docker-compose-env.yml logs -f redis
 go work sync
 
 # 生成 API 代码（修改 .api 后执行），要到对应的微服务api文件目录下执行
-goctl api go -api desc/usercenter.api -dir=. 
+goctl api go -api desc/usercenter.api -dir=.
 
 # 生成 RPC 代码（修改 .proto 后执行），要到对应的微服务的rpc文件目录下执行
-goctl rpc protoc pb/contentService.proto --go_out=. --go-grpc_out=. --zrpc_out=. 
-
-# 运行服务
-go run app/usercenter/cmd/api/usercenter.go -f app/usercenter/cmd/api/etc/usercenter.yaml
-go run app/usercenter/cmd/rpc/usercenter.go -f app/usercenter/cmd/rpc/etc/usercenter.yaml
+goctl rpc protoc pb/contentService.proto --go_out=. --go-grpc_out=. --zrpc_out=.
+//注意由于之前的protoc并非最新，goctl输出时文件名称会有细微不同
+//如你需要在notice的rpc目录下把goctl生成的pb.go名称修改为->notice.go，
+//把rpc/etc下面的pb.yaml修改为noticeservice.yaml,同时修改notice.go里的代码
+var configFile = flag.String("f", "etc/noticeservice.yaml", "the config file")
 ```
 
 ### 数据库

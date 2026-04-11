@@ -26,6 +26,21 @@ func NewGetUserAllLikesLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 
 // GetUserAllLikes 获取用户所有点赞关系（登录时调用，前端存储到本地）
 func (l *GetUserAllLikesLogic) GetUserAllLikes(in *pb.GetUserAllLikesReq) (*pb.GetUserAllLikesResp, error) {
+	// 0. 增量同步优化：查 user_like_sync 表，如果 cursor == last_like_time 说明没有新的点赞操作
+	lastLikeTime, err := l.svcCtx.UserLikeSyncModel.FindLastLikeTime(l.ctx, in.Uid)
+	if err != nil {
+		logx.Errorf("GetUserAllLikes FindLastLikeTime error, uid:%d, err:%v", in.Uid, err)
+		// 查询失败不阻塞，继续走正常流程
+	} else if in.Cursor != 0 && in.Cursor == lastLikeTime {
+		// cursor 匹配，说明没有新的点赞操作，直接返回空
+		return &pb.GetUserAllLikesResp{
+			Code:         0,
+			Msg:          "success",
+			TweetLikes:   []*pb.UserTweetLike{},
+			CommentLikes: []*pb.UserCommentLike{},
+		}, nil
+	}
+
 	// 1. 查询用户所有推文点赞记录
 	tweetLikes, err := l.svcCtx.LikesTweetModel.FindAllByUid(l.ctx, in.Uid, in.Cursor)
 	if err != nil && err != model.ErrNotFound {
@@ -59,6 +74,7 @@ func (l *GetUserAllLikesLogic) GetUserAllLikes(in *pb.GetUserAllLikesReq) (*pb.G
 	commentLikeInfos := make([]*pb.UserCommentLike, 0, len(commentLikes))
 	for _, like := range commentLikes {
 		commentLikeInfos = append(commentLikeInfos, &pb.UserCommentLike{
+			SnowTid:     like.SnowTid,
 			SnowCid:     like.SnowCid,
 			SnowLikesId: like.SnowLikesId,
 			Status:      like.Status,

@@ -4,17 +4,18 @@
 package handler
 
 import (
-	"gozeroX/pkg/jwt"
 	"net/http"
 
 	interaction "gozeroX/app/interactService/cmd/api/internal/handler/interaction"
 	"gozeroX/app/interactService/cmd/api/internal/svc"
+	"gozeroX/pkg/jwt"
 
 	"github.com/zeromicro/go-zero/rest"
 )
 
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	jwtMiddleware := jwt.NewJwtMiddleware(serverCtx.Config.JwtAuth.AccessSecret)
+
 	server.AddRoutes(
 		[]rest.Route{
 			{
@@ -43,7 +44,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: jwtMiddleware.Handle(interaction.GetUserLikesAllHandler(serverCtx)),
 			},
 			{
-				Method:  http.MethodGet,
+				Method:  http.MethodPost,
 				Path:    "/like",
 				Handler: jwtMiddleware.Handle(interaction.LikeHandler(serverCtx)),
 			},

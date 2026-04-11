@@ -26,9 +26,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	// Redis 客户端
 	redisClient := redis.MustNewRedis(redis.RedisConf{
-		Host: c.Redis.Host,
-		Pass: c.Redis.Pass,
-		Type: c.Redis.Type,
+		Host: c.RedisConf.Host,
+		Pass: c.RedisConf.Pass,
+		Type: c.RedisConf.Type,
 	})
 
 	cacheManager := cache.NewManager(redisClient)

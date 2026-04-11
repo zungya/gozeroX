@@ -38,8 +38,18 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (resp *types.RegisterRe
 		return nil, err
 	}
 
-	// 2. 转换响应
+	// 2. 检查 RPC 返回的错误码
+	if rpcResp.Code != 0 {
+		return &types.RegisterResp{
+			Code:    int(rpcResp.Code),
+			Message: rpcResp.Msg,
+		}, nil
+	}
+
+	// 3. 转换响应
 	return &types.RegisterResp{
+		Code:         0,
+		Message:      "success",
 		AccessToken:  rpcResp.Token.AccessToken,
 		AccessExpire: rpcResp.Token.AccessExpire,
 		UserInfo: types.UserInfo{

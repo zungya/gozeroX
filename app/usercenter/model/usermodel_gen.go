@@ -143,11 +143,22 @@ func (m *defaultUserModel) FindOneByNickname(ctx context.Context, nickname strin
 func (m *defaultUserModel) Insert(ctx context.Context, data *User) (sql.Result, error) {
 	publicUserMobileKey := fmt.Sprintf("%s%v", cachePublicUserMobilePrefix, data.Mobile)
 	publicUserNicknameKey := fmt.Sprintf("%s%v", cachePublicUserNicknamePrefix, data.Nickname)
-	publicUserUidKey := fmt.Sprintf("%s%v", cachePublicUserUidPrefix, data.Uid)
+	publicUserUidKey := fmt.Sprintf("%s%v", cachePublicUserUidPrefix, 0)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", m.table, userRowsExpectAutoSet)
 		return conn.ExecCtx(ctx, query, data.Mobile, data.Password, data.Nickname, data.Avatar, data.Bio, data.FollowCount, data.FansCount, data.PostCount, data.Status, data.LastLoginAt)
 	}, publicUserMobileKey, publicUserNicknameKey, publicUserUidKey)
+
+	// PostgreSQL lib/pq 不支持 LastInsertId，单独查询获取 uid
+	if err == nil {
+		var uid int64
+		query := fmt.Sprintf("select uid from %s where mobile = $1 order by uid desc limit 1", m.table)
+		err = m.QueryRowNoCacheCtx(ctx, &uid, query, data.Mobile)
+		if err == nil {
+			data.Uid = uid
+		}
+	}
+
 	return ret, err
 }
 

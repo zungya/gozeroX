@@ -52,3 +52,9 @@ func (s *ContentServer) DeleteTweet(ctx context.Context, in *pb.DeleteTweetReq) 
 	l := logic.NewDeleteTweetLogic(ctx, s.svcCtx)
 	return l.DeleteTweet(in)
 }
+
+// 更新推文统计字段（like_count / comment_count）
+func (s *ContentServer) UpdateTweetStats(ctx context.Context, in *pb.UpdateTweetStatsReq) (*pb.UpdateTweetStatsResp, error) {
+	l := logic.NewUpdateTweetStatsLogic(ctx, s.svcCtx)
+	return l.UpdateTweetStats(in)
+}

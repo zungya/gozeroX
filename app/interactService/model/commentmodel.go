@@ -20,6 +20,7 @@ type (
 		FindReplySnowCidsByParentId(ctx context.Context, parentSnowCid int64) ([]int64, error)
 		FindBatchBySnowCids(ctx context.Context, snowCids []int64) ([]*Comment, error)
 		FindRepliesByRootId(ctx context.Context, rootSnowCid int64, cursor int64, limit int64) ([]*Comment, error)
+		UpdateCount(ctx context.Context, snowCid int64, updateType int64, delta int64) error
 	}
 
 	customCommentModel struct {
@@ -95,4 +96,27 @@ func (m *customCommentModel) FindRepliesByRootId(ctx context.Context, rootSnowCi
 		return nil, err
 	}
 	return comments, nil
+}
+
+// UpdateCount 原子更新评论计数字段（like_count 或 reply_count）
+// updateType: 1=like_count, 2=reply_count
+func (m *customCommentModel) UpdateCount(ctx context.Context, snowCid int64, updateType int64, delta int64) error {
+	var field string
+	switch updateType {
+	case 1:
+		field = "like_count"
+	case 2:
+		field = "reply_count"
+	default:
+		return fmt.Errorf("unknown update type: %d", updateType)
+	}
+
+	query := fmt.Sprintf(`
+        UPDATE %s
+        SET %s = %s + $1, updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+        WHERE snow_cid = $2
+    `, m.table, field, field)
+
+	_, err := m.ExecNoCacheCtx(ctx, query, delta, snowCid)
+	return err
 }

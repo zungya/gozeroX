@@ -25,6 +25,8 @@ type (
 	ListTweetsUidReq      = pb.ListTweetsUidReq
 	ListTweetsUidResp     = pb.ListTweetsUidResp
 	Tweet                 = pb.Tweet
+	UpdateTweetStatsReq   = pb.UpdateTweetStatsReq
+	UpdateTweetStatsResp  = pb.UpdateTweetStatsResp
 
 	Content interface {
 		// 用户主页推文列表（游标分页）
@@ -37,6 +39,8 @@ type (
 		CreateTweet(ctx context.Context, in *CreateTweetReq, opts ...grpc.CallOption) (*CreateTweetResp, error)
 		// 删除推文
 		DeleteTweet(ctx context.Context, in *DeleteTweetReq, opts ...grpc.CallOption) (*DeleteTweetResp, error)
+		// 更新推文统计字段（like_count / comment_count）
+		UpdateTweetStats(ctx context.Context, in *UpdateTweetStatsReq, opts ...grpc.CallOption) (*UpdateTweetStatsResp, error)
 	}
 
 	defaultContent struct {
@@ -78,4 +82,10 @@ func (m *defaultContent) CreateTweet(ctx context.Context, in *CreateTweetReq, op
 func (m *defaultContent) DeleteTweet(ctx context.Context, in *DeleteTweetReq, opts ...grpc.CallOption) (*DeleteTweetResp, error) {
 	client := pb.NewContentClient(m.cli.Conn())
 	return client.DeleteTweet(ctx, in, opts...)
+}
+
+// 更新推文统计字段（like_count / comment_count）
+func (m *defaultContent) UpdateTweetStats(ctx context.Context, in *UpdateTweetStatsReq, opts ...grpc.CallOption) (*UpdateTweetStatsResp, error) {
+	client := pb.NewContentClient(m.cli.Conn())
+	return client.UpdateTweetStats(ctx, in, opts...)
 }

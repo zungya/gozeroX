@@ -124,6 +124,26 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		go l.recordFailedMessage(comment)
 	}
 
+	// 6.5 异步发送评论通知（不影响主流程）
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logx.Errorf("sendCommentNotification panic: %v", r)
+			}
+		}()
+		l.sendCommentNotification(comment)
+	}()
+
+	// 6.6 异步发送评论互动事件到 Kafka（推荐系统用）
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logx.Errorf("sendRecommendInteraction panic: %v", r)
+			}
+		}()
+		l.sendRecommendInteraction("comment_tweet", comment.Uid, comment.SnowTid, comment.SnowCid, comment.Content)
+	}()
+
 	// 7. 调用 usercenter RPC 获取用户信息（昵称、头像）
 	var nickname, avatar string
 	userInfoResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{
@@ -205,5 +225,108 @@ func (l *CreateCommentLogic) recordFailedMessage(comment *model.Comment) {
 	_, err := l.svcCtx.RedisClient.LpushCtx(l.ctx, "failed:comment:create", string(failedBody))
 	if err != nil {
 		logx.Errorf("recordFailedMessage lpush errorx: %v", err)
+	}
+}
+
+// sendCommentNotification 异步发送评论通知到 Kafka notice topic
+func (l *CreateCommentLogic) sendCommentNotification(comment *model.Comment) {
+	if comment.ParentId == 0 {
+		// 顶级评论：通知推文作者
+		l.sendTweetCommentNotification(comment)
+	} else {
+		// 回复评论：通知被回复的评论作者
+		l.sendReplyCommentNotification(comment)
+	}
+}
+
+// sendTweetCommentNotification 顶级评论通知
+func (l *CreateCommentLogic) sendTweetCommentNotification(comment *model.Comment) {
+	// 获取推文作者UID
+	recipientUid, err := l.svcCtx.GetTweetAuthorUid(context.Background(), comment.SnowTid)
+	if err != nil {
+		logx.Errorf("sendTweetCommentNotification GetTweetAuthorUid error: %v", err)
+		return
+	}
+	// 自己评论自己的推文不发通知
+	if recipientUid == comment.Uid {
+		return
+	}
+
+	message := map[string]interface{}{
+		"action":          "comment_tweet",
+		"target_type":     0,
+		"commenter_uid":   comment.Uid,
+		"recipient_uid":   recipientUid,
+		"snow_tid":        comment.SnowTid,
+		"snow_cid":        comment.SnowCid,
+		"root_id":         0,
+		"parent_id":       0,
+		"content":         comment.Content,
+		"replied_content": "",
+		"timestamp":       comment.CreatedAt,
+	}
+	l.pushNoticeMessage(message, fmt.Sprintf("comment_%d_%d", recipientUid, comment.SnowCid))
+}
+
+// sendReplyCommentNotification 回复评论通知
+func (l *CreateCommentLogic) sendReplyCommentNotification(comment *model.Comment) {
+	// 获取父评论作者UID和内容
+	parentComment, err := l.svcCtx.GetCommentBySnowCid(context.Background(), comment.ParentId)
+	if err != nil {
+		logx.Errorf("sendReplyCommentNotification GetCommentBySnowCid error, parentId:%d, err:%v", comment.ParentId, err)
+		return
+	}
+	// 自己回复自己的评论不发通知
+	if parentComment.Uid == comment.Uid {
+		return
+	}
+
+	message := map[string]interface{}{
+		"action":          "reply_comment",
+		"target_type":     1,
+		"commenter_uid":   comment.Uid,
+		"recipient_uid":   parentComment.Uid,
+		"snow_tid":        comment.SnowTid,
+		"snow_cid":        comment.SnowCid,
+		"root_id":         comment.RootId,
+		"parent_id":       comment.ParentId,
+		"content":         comment.Content,
+		"replied_content": parentComment.Content,
+		"timestamp":       comment.CreatedAt,
+	}
+	l.pushNoticeMessage(message, fmt.Sprintf("reply_%d_%d", parentComment.Uid, comment.SnowCid))
+}
+
+// pushNoticeMessage 发送通知消息到 Kafka notice topic
+func (l *CreateCommentLogic) pushNoticeMessage(message map[string]interface{}, key string) {
+	body, err := json.Marshal(message)
+	if err != nil {
+		logx.Errorf("pushNoticeMessage marshal error: %v", err)
+		return
+	}
+	pusher := l.svcCtx.GetPusher("notice")
+	if err := pusher.PushWithKey(context.Background(), key, string(body)); err != nil {
+		logx.Errorf("pushNoticeMessage push error, key:%s, err:%v", key, err)
+	}
+}
+
+// sendRecommendInteraction 发送互动事件到 Kafka recommend_interaction topic（推荐系统用）
+func (l *CreateCommentLogic) sendRecommendInteraction(action string, uid, snowTid, snowCid int64, content string) {
+	message := map[string]interface{}{
+		"action":    action,
+		"uid":       uid,
+		"snow_tid":  snowTid,
+		"snow_cid":  snowCid,
+		"content":   content,
+		"timestamp": time.Now().UnixMilli(),
+	}
+	body, err := json.Marshal(message)
+	if err != nil {
+		logx.Errorf("sendRecommendInteraction marshal error: %v", err)
+		return
+	}
+	pusher := l.svcCtx.GetPusher("recommend_interaction")
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowCid), string(body)); err != nil {
+		logx.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

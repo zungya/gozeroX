@@ -9,6 +9,8 @@ type LoginReq struct {
 }
 
 type LoginResp struct {
+	Code         int64    `json:"code"`
+	Msg          string   `json:"msg"`
 	AccessToken  string   `json:"accessToken"`
 	AccessExpire int64    `json:"accessExpire"`
 	UserInfo     UserInfo `json:"userInfo"`
@@ -20,6 +22,8 @@ type RegisterReq struct {
 }
 
 type RegisterResp struct {
+	Code         int      `json:"code"`
+	Message      string   `json:"message"`
 	AccessToken  string   `json:"accessToken"`
 	AccessExpire int64    `json:"accessExpire"`
 	UserInfo     UserInfo `json:"userInfo"`

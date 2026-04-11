@@ -38,8 +38,18 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 		return nil, err
 	}
 
-	// 2. 转换响应（RPC 的 pb 转为 API 的 types）
+	// 2. 检查 RPC 返回的错误码
+	if rpcResp.Code != 0 {
+		return &types.LoginResp{
+			Code: rpcResp.Code,
+			Msg:  rpcResp.Msg,
+		}, nil
+	}
+
+	// 3. 转换响应（RPC 的 pb 转为 API 的 types）
 	return &types.LoginResp{
+		Code:         0,
+		Msg:          "success",
 		AccessToken:  rpcResp.Token.AccessToken,
 		AccessExpire: rpcResp.Token.AccessExpire,
 		UserInfo: types.UserInfo{

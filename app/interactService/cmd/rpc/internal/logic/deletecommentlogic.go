@@ -7,6 +7,7 @@ import (
 	"gozeroX/app/interactService/model"
 	"time"
 
+	"gozeroX/app/contentService/cmd/rpc/content"
 	"gozeroX/app/interactService/cmd/rpc/internal/svc"
 	"gozeroX/app/interactService/cmd/rpc/pb"
 
@@ -84,16 +85,33 @@ func (l *DeleteCommentLogic) DeleteComment(in *pb.DeleteCommentReq) (*pb.DeleteC
 		go l.sendStatusSyncMessage(in.SnowCid, 1)
 	}
 
-	// 6. 更新相关计数
+	// 6. 更新相关计数（Redis + DB）
 	go func() {
+		// --- Redis 缓存计数更新 ---
 		// 减少推文评论数
 		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, comment.SnowTid, -1); err != nil {
-			logx.Errorf("DeleteComment decr tweet comment count errorx, snowTid:%d, err:%v", comment.SnowTid, err)
+			logx.Errorf("DeleteComment decr tweet comment count cache errorx, snowTid:%d, err:%v", comment.SnowTid, err)
 		}
 		// 如果是回复，减少父评论的回复数
 		if comment.ParentId != 0 {
 			if err := l.svcCtx.IncrCommentReplyCount(l.ctx, comment.ParentId, -1); err != nil {
-				logx.Errorf("DeleteComment decr comment reply count errorx, parentId:%d, err:%v", comment.ParentId, err)
+				logx.Errorf("DeleteComment decr comment reply count cache errorx, parentId:%d, err:%v", comment.ParentId, err)
+			}
+		}
+
+		// --- DB 数据库计数更新 ---
+		// 减少推文评论数（通过 contentService RPC）
+		if _, err := l.svcCtx.ContentServiceRpc.UpdateTweetStats(l.ctx, &content.UpdateTweetStatsReq{
+			SnowTid:    comment.SnowTid,
+			UpdateType: 2, // 2=comment_count
+			Delta:      -1,
+		}); err != nil {
+			logx.Errorf("DeleteComment decr tweet comment count DB errorx, snowTid:%d, err:%v", comment.SnowTid, err)
+		}
+		// 如果是回复，减少父评论的回复数
+		if comment.ParentId != 0 {
+			if err := l.svcCtx.CommentModel.UpdateCount(l.ctx, comment.ParentId, 2, -1); err != nil {
+				logx.Errorf("DeleteComment decr comment reply count DB errorx, parentId:%d, err:%v", comment.ParentId, err)
 			}
 		}
 	}()

@@ -752,6 +752,119 @@ func (x *DeleteTweetResp) GetMsg() string {
 	return ""
 }
 
+// ========== 更新推文统计 ==========
+type UpdateTweetStatsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SnowTid       int64                  `protobuf:"varint,1,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
+	UpdateType    int64                  `protobuf:"varint,2,opt,name=update_type,json=updateType,proto3" json:"update_type,omitempty"` // 1=like_count, 2=comment_count
+	Delta         int64                  `protobuf:"varint,3,opt,name=delta,proto3" json:"delta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTweetStatsReq) Reset() {
+	*x = UpdateTweetStatsReq{}
+	mi := &file_pb_contentService_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTweetStatsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTweetStatsReq) ProtoMessage() {}
+
+func (x *UpdateTweetStatsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_contentService_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTweetStatsReq.ProtoReflect.Descriptor instead.
+func (*UpdateTweetStatsReq) Descriptor() ([]byte, []int) {
+	return file_pb_contentService_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpdateTweetStatsReq) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
+	}
+	return 0
+}
+
+func (x *UpdateTweetStatsReq) GetUpdateType() int64 {
+	if x != nil {
+		return x.UpdateType
+	}
+	return 0
+}
+
+func (x *UpdateTweetStatsReq) GetDelta() int64 {
+	if x != nil {
+		return x.Delta
+	}
+	return 0
+}
+
+type UpdateTweetStatsResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTweetStatsResp) Reset() {
+	*x = UpdateTweetStatsResp{}
+	mi := &file_pb_contentService_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTweetStatsResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTweetStatsResp) ProtoMessage() {}
+
+func (x *UpdateTweetStatsResp) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_contentService_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTweetStatsResp.ProtoReflect.Descriptor instead.
+func (*UpdateTweetStatsResp) Descriptor() ([]byte, []int) {
+	return file_pb_contentService_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpdateTweetStatsResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *UpdateTweetStatsResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
 var File_pb_contentService_proto protoreflect.FileDescriptor
 
 const file_pb_contentService_proto_rawDesc = "" +
@@ -813,13 +926,22 @@ const file_pb_contentService_proto_rawDesc = "" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\"7\n" +
 	"\x0fDeleteTweetResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msg2\xc2\x02\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\"g\n" +
+	"\x13UpdateTweetStatsReq\x12\x19\n" +
+	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x1f\n" +
+	"\vupdate_type\x18\x02 \x01(\x03R\n" +
+	"updateType\x12\x14\n" +
+	"\x05delta\x18\x03 \x01(\x03R\x05delta\"<\n" +
+	"\x14UpdateTweetStatsResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg2\x89\x03\n" +
 	"\aContent\x12<\n" +
 	"\rListTweetsUid\x12\x14.pb.ListTweetsUidReq\x1a\x15.pb.ListTweetsUidResp\x12H\n" +
 	"\x11GetTweetBySnowTid\x12\x18.pb.GetTweetBySnowTidReq\x1a\x19.pb.GetTweetBySnowTidResp\x12?\n" +
 	"\x0eBatchGetTweets\x12\x15.pb.BatchGetTweetsReq\x1a\x16.pb.BatchGetTweetsResp\x126\n" +
 	"\vCreateTweet\x12\x12.pb.CreateTweetReq\x1a\x13.pb.CreateTweetResp\x126\n" +
-	"\vDeleteTweet\x12\x12.pb.DeleteTweetReq\x1a\x13.pb.DeleteTweetRespB\x06Z\x04./pbb\x06proto3"
+	"\vDeleteTweet\x12\x12.pb.DeleteTweetReq\x1a\x13.pb.DeleteTweetResp\x12E\n" +
+	"\x10UpdateTweetStats\x12\x17.pb.UpdateTweetStatsReq\x1a\x18.pb.UpdateTweetStatsRespB\x06Z\x04./pbb\x06proto3"
 
 var (
 	file_pb_contentService_proto_rawDescOnce sync.Once
@@ -833,7 +955,7 @@ func file_pb_contentService_proto_rawDescGZIP() []byte {
 	return file_pb_contentService_proto_rawDescData
 }
 
-var file_pb_contentService_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_pb_contentService_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_pb_contentService_proto_goTypes = []any{
 	(*Tweet)(nil),                 // 0: pb.Tweet
 	(*ListTweetsUidReq)(nil),      // 1: pb.ListTweetsUidReq
@@ -846,6 +968,8 @@ var file_pb_contentService_proto_goTypes = []any{
 	(*CreateTweetResp)(nil),       // 8: pb.CreateTweetResp
 	(*DeleteTweetReq)(nil),        // 9: pb.DeleteTweetReq
 	(*DeleteTweetResp)(nil),       // 10: pb.DeleteTweetResp
+	(*UpdateTweetStatsReq)(nil),   // 11: pb.UpdateTweetStatsReq
+	(*UpdateTweetStatsResp)(nil),  // 12: pb.UpdateTweetStatsResp
 }
 var file_pb_contentService_proto_depIdxs = []int32{
 	0,  // 0: pb.ListTweetsUidResp.tweets:type_name -> pb.Tweet
@@ -857,13 +981,15 @@ var file_pb_contentService_proto_depIdxs = []int32{
 	5,  // 6: pb.Content.BatchGetTweets:input_type -> pb.BatchGetTweetsReq
 	7,  // 7: pb.Content.CreateTweet:input_type -> pb.CreateTweetReq
 	9,  // 8: pb.Content.DeleteTweet:input_type -> pb.DeleteTweetReq
-	2,  // 9: pb.Content.ListTweetsUid:output_type -> pb.ListTweetsUidResp
-	4,  // 10: pb.Content.GetTweetBySnowTid:output_type -> pb.GetTweetBySnowTidResp
-	6,  // 11: pb.Content.BatchGetTweets:output_type -> pb.BatchGetTweetsResp
-	8,  // 12: pb.Content.CreateTweet:output_type -> pb.CreateTweetResp
-	10, // 13: pb.Content.DeleteTweet:output_type -> pb.DeleteTweetResp
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
+	11, // 9: pb.Content.UpdateTweetStats:input_type -> pb.UpdateTweetStatsReq
+	2,  // 10: pb.Content.ListTweetsUid:output_type -> pb.ListTweetsUidResp
+	4,  // 11: pb.Content.GetTweetBySnowTid:output_type -> pb.GetTweetBySnowTidResp
+	6,  // 12: pb.Content.BatchGetTweets:output_type -> pb.BatchGetTweetsResp
+	8,  // 13: pb.Content.CreateTweet:output_type -> pb.CreateTweetResp
+	10, // 14: pb.Content.DeleteTweet:output_type -> pb.DeleteTweetResp
+	12, // 15: pb.Content.UpdateTweetStats:output_type -> pb.UpdateTweetStatsResp
+	10, // [10:16] is the sub-list for method output_type
+	4,  // [4:10] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -880,7 +1006,7 @@ func file_pb_contentService_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_contentService_proto_rawDesc), len(file_pb_contentService_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

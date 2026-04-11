@@ -74,6 +74,18 @@ message BatchUserBriefResp {
 }
 
 
+// ==================== 更新用户统计 ====================
+message UpdateUserStatsReq {
+  int64 uid = 1;
+  int64 update_type = 2;  // 1=follow_count, 2=fans_count, 3=post_count
+  int64 delta = 3;        // +1 或 -1
+}
+
+message UpdateUserStatsResp {
+  int64 code = 1;
+  string msg = 2;
+}
+
 // ==================== 服务定义 ====================
 service UserCenter {
   // 用户注册（返回token）
@@ -88,5 +100,7 @@ service UserCenter {
   // 批量获取用户简要信息（给互动微服务的）
   rpc BatchGetUserBrief(BatchUserBriefReq) returns (BatchUserBriefResp);
 
+  // 更新用户统计字段（follow_count/fans_count/post_count）
+  rpc UpdateUserStats(UpdateUserStatsReq) returns (UpdateUserStatsResp);
 }
 

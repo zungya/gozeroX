@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -14,7 +15,7 @@ type (
 	// and implement the added methods in customUserModel.
 	UserModel interface {
 		userModel
-		UpdateStatsWithValues(ctx context.Context, uid int64, updateType int64, delta int64) (beforeVal int64, afterVal int64, err error)
+		UpdateStatsWithValues(ctx context.Context, uid int64, updateType int64, delta int64) error
 		UpdateLastLogin(ctx context.Context, uid int64) error
 		FindBatchByUids(ctx context.Context, uids []int64) ([]*User, error)
 	}
@@ -32,7 +33,7 @@ func NewUserModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) Us
 }
 
 // UpdateStatsWithValues 更新统计字段并返回变更前后的值
-func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, updateType int64, delta int64) (beforeVal int64, afterVal int64, err error) {
+func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, updateType int64, delta int64) (err error) {
 	// 1. 根据 updateType 确定要更新的字段
 	var field string
 	switch updateType {
@@ -43,7 +44,7 @@ func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, 
 	case 3:
 		field = "post_count"
 	default:
-		return 0, 0, fmt.Errorf("unknown update type: %d", updateType)
+		return fmt.Errorf("unknown update type: %d", updateType)
 	}
 
 	// 2. 定义临时结构体接收返回值
@@ -63,11 +64,10 @@ func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, 
 	// 4. 执行查询
 	err = m.QueryRowNoCacheCtx(ctx, &result, query, delta, uid)
 	if err != nil {
-		// ✅ 这里返回 err，不是 nil！
-		return 0, 0, err
+		return err
 	}
 
-	return result.BeforeVal, result.AfterVal, nil
+	return nil
 }
 
 // UpdateLastLogin 更新最后登录时间

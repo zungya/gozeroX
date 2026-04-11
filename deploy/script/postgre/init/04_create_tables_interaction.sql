@@ -1,4 +1,4 @@
--- 06_create_tables_interaction.sql
+-- 04_create_tables_interaction.sql
 -- 功能：创建互动服务核心表（评论表 + 点赞表）
 -- 执行前确保已在 gozerox_db 中
 \c gozerox_db;
@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS likes_comment (
     snow_likes_id BIGINT NOT NULL PRIMARY KEY,
     uid BIGINT NOT NULL,
     snow_cid BIGINT NOT NULL,
+    snow_tid BIGINT NOT NULL,
     created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
     updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
     status SMALLINT NOT NULL DEFAULT 1 CHECK (status IN (0, 1))
@@ -109,6 +110,7 @@ COMMENT ON TABLE likes_comment IS '评论点赞表';
 COMMENT ON COLUMN likes_comment.snow_likes_id IS '业务ID（前后端主要使用）';
 COMMENT ON COLUMN likes_comment.uid IS '点赞用户ID';
 COMMENT ON COLUMN likes_comment.snow_cid IS '评论ID';
+COMMENT ON COLUMN likes_comment.snow_tid IS '评论所属推文ID（冗余字段，避免关联查询）';
 COMMENT ON COLUMN likes_comment.created_at IS '创建时间（毫秒级时间戳）';
 COMMENT ON COLUMN likes_comment.updated_at IS '更新时间（毫秒级时间戳）';
 COMMENT ON COLUMN likes_comment.status IS '状态：1点赞，0取消';
@@ -118,3 +120,16 @@ CREATE VIEW likes_comment_active AS
 SELECT * FROM likes_comment WHERE status = 1 ORDER BY uid, updated_at;
 
 COMMENT ON VIEW likes_comment_active IS '有效评论点赞视图（status=1，按uid和updated_at排序，支持增量同步）';
+
+
+-- ==================== User Like Sync 表 ====================
+-- 记录用户最后的点赞操作时间，用于增量同步优化
+-- 前端登录时请求 GetUserAllLikes，如果 req.cursor == last_like_time，说明没有新的点赞操作，直接返回空
+CREATE TABLE IF NOT EXISTS user_like_sync (
+    uid BIGINT NOT NULL PRIMARY KEY,
+    last_like_time BIGINT NOT NULL DEFAULT 0
+);
+
+COMMENT ON TABLE user_like_sync IS '用户点赞同步时间表（用于增量同步优化）';
+COMMENT ON COLUMN user_like_sync.uid IS '用户ID（主键）';
+COMMENT ON COLUMN user_like_sync.last_like_time IS '最后点赞操作时间（毫秒级时间戳），包括点赞推文和点赞评论';

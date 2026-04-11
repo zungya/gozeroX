@@ -98,4 +98,18 @@ service Content {
   rpc CreateTweet(CreateTweetReq) returns (CreateTweetResp);
   // 删除推文
   rpc DeleteTweet(DeleteTweetReq) returns (DeleteTweetResp);
+  // 更新推文统计字段（like_count / comment_count）
+  rpc UpdateTweetStats(UpdateTweetStatsReq) returns (UpdateTweetStatsResp);
+}
+
+// ========== 更新推文统计 ==========
+message UpdateTweetStatsReq {
+  int64  snow_tid = 1;
+  int64  update_type = 2; // 1=like_count, 2=comment_count
+  int64  delta = 3;
+}
+
+message UpdateTweetStatsResp {
+  int64  code = 1;
+  string msg = 2;
 }

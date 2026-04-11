@@ -69,22 +69,6 @@ services:
       - gozeroX_net
 
 
-  #asynqmon asynq延迟队列、定时队列的webui - Asynqmon asynq delay queue, timing queue's webUI
-  asynqmon:
-    image: hibiken/asynqmon:latest
-    platform: linux/amd64  # Mac ARM64 兼容：使用 x86 模拟
-    container_name: asynqmon
-    ports:
-      - 8980:8080
-    command:
-      - '--redis-addr=redis:6379'
-      - '--redis-password=mTRT1XBhk9VgWb9n'
-    restart: always
-    networks:
-      - gozeroX_net
-    depends_on:
-      - redis
-
   #redis容器 - Redis container
   redis:
     image: redis:7.4-alpine

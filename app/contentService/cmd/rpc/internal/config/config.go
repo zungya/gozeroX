@@ -12,7 +12,7 @@ type Config struct {
 		DataSource string
 	}
 
-	Redis struct {
+	RedisConf struct {
 		Host      string
 		Pass      string
 		Type      string
@@ -24,8 +24,8 @@ type Config struct {
 	// Kafka 配置
 	Kafka struct {
 		Addrs  []string
-		Group  string
-		Topics []string
+		Group  string   `json:",optional"`
+		Topics []string `json:",optional"`
 	} `json:",optional"`
 
 	UserCenterRpcConf zrpc.RpcClientConf

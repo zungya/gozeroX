@@ -1,4 +1,4 @@
-Name: contentService-rpc
+Name: interactService-rpc
 ListenOn: 0.0.0.0:2003
 Mode: dev
 
@@ -8,7 +8,7 @@ Prometheus:
   Port: 4006
   Path: /metrics
 
-Redis:
+RedisConf:
   Host: redis:6379
   Type: node
   Pass: mTRT1XBhk9VgWb9n
@@ -23,8 +23,7 @@ Cache:
 
 Kafka:
   Addrs:
-    - localhost:9092
-    - localhost:9093
+    - kafka:9092
 
 Log:
   ServiceName: interactService-rpc
@@ -33,3 +32,13 @@ Log:
   Path: logs          # 文件日志路径
   KeepDays: 7         # 保留天数
   StackCooldownMillis: 100  # 堆栈间隔
+
+UserCenterRpcConf:
+  Endpoints:
+    - 127.0.0.1:2001
+  NonBlock: true
+
+ContentServiceRpcConf:
+  Endpoints:
+    - 127.0.0.1:2002
+  NonBlock: true

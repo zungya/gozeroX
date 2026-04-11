@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -77,6 +79,13 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 		}
 	}()
 
+	// 5.5 异步发送推文入库事件到 Kafka（推荐系统用）
+	go func() {
+		if err := l.sendRecommendIndexMessage(tweet); err != nil {
+			logx.Errorf("CreateTweet sendRecommendIndexMessage error, snowTid:%d, err:%v", snowTid, err)
+		}
+	}()
+
 	// 6. 获取用户信息（用于填充 nickname 和 avatar）
 	userResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{Uid: in.Uid})
 	if err != nil {
@@ -101,4 +110,25 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 		Msg:   "success",
 		Tweet: pbTweet,
 	}, nil
+}
+
+// sendRecommendIndexMessage 发送推文入库消息到 Kafka recommend_tweet topic
+func (l *CreateTweetLogic) sendRecommendIndexMessage(tweet *model.Tweet) error {
+	message := map[string]interface{}{
+		"action":     "index_tweet",
+		"snow_tid":   tweet.SnowTid,
+		"uid":        tweet.Uid,
+		"content":    tweet.Content,
+		"media_urls": tweet.MediaUrls,
+		"tags":       tweet.Tags,
+		"created_at": tweet.CreatedAt,
+	}
+
+	body, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	pusher := l.svcCtx.GetPusher("recommend_tweet")
+	return pusher.PushWithKey(context.Background(), fmt.Sprintf("%d", tweet.SnowTid), string(body))
 }

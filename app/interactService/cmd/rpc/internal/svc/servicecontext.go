@@ -2,6 +2,8 @@ package svc
 
 import (
 	"context"
+	"fmt"
+	"gozeroX/app/contentService/cmd/rpc/content"
 	"gozeroX/app/interactService/cmd/rpc/internal/config"
 	"gozeroX/app/interactService/model"
 	"gozeroX/app/usercenter/cmd/rpc/usercenter"
@@ -25,8 +27,10 @@ type ServiceContext struct {
 	CommentModel      model.CommentModel
 	LikesTweetModel   model.LikesTweetModel
 	LikesCommentModel model.LikesCommentModel
+	UserLikeSyncModel model.UserLikeSyncModel
 	QueueProducer     *queue.Producer
 	UserCenterRpc     usercenter.UserCenter
+	ContentServiceRpc content.Content
 
 	pusherMu   sync.RWMutex
 	pusherPool map[string]*kq.Pusher // topic -> pusher
@@ -38,9 +42,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	// Redis 客户端
 	redisClient := redis.MustNewRedis(redis.RedisConf{
-		Host: c.Redis.Host,
-		Pass: c.Redis.Pass,
-		Type: c.Redis.Type,
+		Host: c.RedisConf.Host,
+		Pass: c.RedisConf.Pass,
+		Type: c.RedisConf.Type,
 	})
 
 	// 缓存管理器
@@ -53,7 +57,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		CommentModel:      model.NewCommentModel(sqlConn, c.Cache),
 		LikesTweetModel:   model.NewLikesTweetModel(sqlConn, c.Cache),
 		LikesCommentModel: model.NewLikesCommentModel(sqlConn, c.Cache),
+		UserLikeSyncModel: model.NewUserLikeSyncModel(sqlConn, c.Cache),
 		UserCenterRpc:     usercenter.NewUserCenter(zrpc.MustNewClient(c.UserCenterRpcConf)),
+		ContentServiceRpc: content.NewContent(zrpc.MustNewClient(c.ContentServiceRpcConf)),
 		pusherPool:        make(map[string]*kq.Pusher),
 	}
 }
@@ -271,4 +277,20 @@ func (s *ServiceContext) GetRepliesByRootId(ctx context.Context, rootSnowCid int
 	}
 
 	return dbReplySnowCids, nil
+}
+
+// GetTweetAuthorUid 从推文缓存获取作者UID（用于通知发送）
+func (s *ServiceContext) GetTweetAuthorUid(ctx context.Context, snowTid int64) (int64, error) {
+	fields, err := s.CacheManager.HGetAll(ctx, "tweet", "info", snowTid)
+	if err != nil {
+		return 0, err
+	}
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("推文缓存未命中, snowTid:%d", snowTid)
+	}
+	uid, err := strconv.ParseInt(fields["uid"], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("解析推文作者UID失败: %v", err)
+	}
+	return uid, nil
 }

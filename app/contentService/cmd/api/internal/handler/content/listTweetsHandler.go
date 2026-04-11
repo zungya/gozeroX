@@ -6,15 +6,16 @@ package content
 import (
 	"net/http"
 
-	"github.com/zeromicro/go-zero/rest/httpx"
 	"gozeroX/app/contentService/cmd/api/internal/logic/content"
 	"gozeroX/app/contentService/cmd/api/internal/svc"
 	"gozeroX/app/contentService/cmd/api/internal/types"
+
+	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 func ListTweetsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.ListTweetsUidReq
+		var req types.ListTweetsReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return

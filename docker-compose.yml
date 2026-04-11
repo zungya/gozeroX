@@ -1,45 +1,142 @@
-######## app下api+rpc ,  Before starting this project, start the environment that the project depends on docker-compose-env.yml #######
+######## gozeroX 应用服务 ########
+######## docker compose build / docker compose up ########
 
 services:
-  #前端网关nginx-gateay
+  # ===== API 网关 =====
   nginx-gateway:
     image: nginx:1.28.0
     container_name: nginx-gateway
     restart: always
-    privileged: true
     environment:
-      - TZ=Asia/Shanghai
+      TZ: Asia/Shanghai
     ports:
       - 8888:8081
     volumes:
       - ./deploy/nginx/conf.d:/etc/nginx/conf.d
       - ./data/nginx/log:/var/log/nginx
-    networks:
-      - gozeroX_net
-    depends_on:
-      - gozeroX
+    network_mode: host
 
-  #前端api + 业务rpc ,gomodd热加载
-  gozeroX:
-    image: lyumikael/gomodd:v1.22.1
-    platform: linux/amd64  # Mac ARM64 兼容：使用 x86 模拟
-    container_name: gozeroX
-    environment:
-      # 时区上海 - Timezone Shanghai
-      TZ: Asia/Shanghai
-      GOPROXY: https://goproxy.cn,direct
-    working_dir: /go/gozeroX
-    volumes:
-      - .:/go/gozeroX
-    privileged: true
-    restart: always
-    networks:
-      - gozeroX_net
+  # ===== usercenter =====
+  usercenter-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/usercenter/cmd/api
+    image: gozerox/usercenter-api:latest
+    container_name: usercenter-api
+    network_mode: host
 
-networks:
-  gozeroX_net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+  usercenter-rpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/usercenter/cmd/rpc
+    image: gozerox/usercenter-rpc:latest
+    container_name: usercenter-rpc
+    network_mode: host
 
+  # ===== contentService =====
+  contentservice-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/contentService/cmd/api
+    image: gozerox/contentservice-api:latest
+    container_name: contentservice-api
+    network_mode: host
+
+  contentservice-rpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/contentService/cmd/rpc
+    image: gozerox/contentservice-rpc:latest
+    container_name: contentservice-rpc
+    network_mode: host
+
+  # ===== interactService =====
+  interactservice-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/interactService/cmd/api
+    image: gozerox/interactservice-api:latest
+    container_name: interactservice-api
+    network_mode: host
+
+  interactservice-rpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/interactService/cmd/rpc
+    image: gozerox/interactservice-rpc:latest
+    container_name: interactservice-rpc
+    network_mode: host
+
+  interactservice-mq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/interactService/cmd/mq
+    image: gozerox/interactservice-mq:latest
+    container_name: interactservice-mq
+    network_mode: host
+
+  # ===== noticeService =====
+  noticeservice-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/noticeService/cmd/api
+    image: gozerox/noticeservice-api:latest
+    container_name: noticeservice-api
+    network_mode: host
+
+  noticeservice-rpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/noticeService/cmd/rpc
+    image: gozerox/noticeservice-rpc:latest
+    container_name: noticeservice-rpc
+    network_mode: host
+
+  noticeservice-mq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/noticeService/cmd/mq
+    image: gozerox/noticeservice-mq:latest
+    container_name: noticeservice-mq
+    network_mode: host
+
+  # ===== recommendService =====
+  recommendservice-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/recommendService/cmd/api
+    image: gozerox/recommendservice-api:latest
+    container_name: recommendservice-api
+    network_mode: host
+
+  recommendservice-rpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_SERVICE: ./app/recommendService/cmd/rpc
+    image: gozerox/recommendservice-rpc:latest
+    container_name: recommendservice-rpc
+    network_mode: host

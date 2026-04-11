@@ -4,7 +4,7 @@ Port: 1003
 Mode: dev
 
 #jwtAuth
-Auth:
+JwtAuth:
   AccessSecret: "a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1"
   AccessExpire: 86400
 

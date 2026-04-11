@@ -60,6 +60,7 @@ func (l *GetUserLikesAllLogic) GetUserLikesAll(req *types.GetUserlikesAllReq) (r
 	commentLikes := make([]types.UserCommentLike, 0, len(rpcResp.CommentLikes))
 	for _, c := range rpcResp.CommentLikes {
 		commentLikes = append(commentLikes, types.UserCommentLike{
+			SnowTid:     c.SnowTid,
 			SnowCid:     c.SnowCid,
 			SnowLikesId: c.SnowLikesId,
 			Status:      c.Status,

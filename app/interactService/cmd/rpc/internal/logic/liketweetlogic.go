@@ -74,6 +74,30 @@ func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, erro
 	}
 	go l.updateTweetLikeCount(in.SnowTid, delta)
 
+	// 异步发送点赞通知（不影响主流程）
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logx.Errorf("sendLikeTweetNotification panic: %v", r)
+			}
+		}()
+		l.sendLikeTweetNotification(in.Uid, in.SnowTid, in.Status)
+	}()
+
+	// 异步发送互动事件到 Kafka（推荐系统用）
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logx.Errorf("sendRecommendInteraction panic: %v", r)
+			}
+		}()
+		action := "like_tweet"
+		if in.Status == 0 {
+			action = "cancel_like_tweet"
+		}
+		l.sendRecommendInteraction(action, in.Uid, in.SnowTid, 0, "")
+	}()
+
 	// 返回点赞信息
 	return &pb.LikeTweetResp{
 		Code: 0,
@@ -119,5 +143,68 @@ func (l *LikeTweetLogic) updateTweetLikeCount(snowTid int64, delta int) {
 	_, err := l.svcCtx.CacheManager.HIncrBy(l.ctx, "tweet", "info", snowTid, "like_count", delta)
 	if err != nil {
 		logx.Errorf("updateTweetLikeCount errorx, snowTid:%d, delta:%d, err:%v", snowTid, delta, err)
+	}
+}
+
+// sendLikeTweetNotification 异步发送推文点赞通知到 Kafka notice topic
+func (l *LikeTweetLogic) sendLikeTweetNotification(likerUid, snowTid int64, status int64) {
+	// 1. 获取推文作者UID（通知接收者）
+	recipientUid, err := l.svcCtx.GetTweetAuthorUid(context.Background(), snowTid)
+	if err != nil {
+		logx.Errorf("sendLikeTweetNotification GetTweetAuthorUid error: %v", err)
+		return
+	}
+	// 自己赞自己的推文不发通知
+	if recipientUid == likerUid {
+		return
+	}
+
+	// 2. 构建通知消息
+	action := "like_tweet"
+	if status == 0 {
+		action = "cancel_like_tweet"
+	}
+	now := time.Now().UnixMilli()
+	message := map[string]interface{}{
+		"action":        action,
+		"target_type":   0,
+		"target_id":     snowTid,
+		"snow_tid":      snowTid,
+		"root_id":       0,
+		"liker_uid":     likerUid,
+		"recipient_uid": recipientUid,
+		"timestamp":     now,
+	}
+	body, err := json.Marshal(message)
+	if err != nil {
+		logx.Errorf("sendLikeTweetNotification marshal error: %v", err)
+		return
+	}
+
+	// 3. 发送到 notice topic
+	pusher := l.svcCtx.GetPusher("notice")
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_tweet_%d_%d", recipientUid, snowTid), string(body)); err != nil {
+		logx.Errorf("sendLikeTweetNotification push error: %v", err)
+	}
+}
+
+// sendRecommendInteraction 发送互动事件到 Kafka recommend_interaction topic（推荐系统用）
+func (l *LikeTweetLogic) sendRecommendInteraction(action string, uid, snowTid, snowCid int64, content string) {
+	message := map[string]interface{}{
+		"action":    action,
+		"uid":       uid,
+		"snow_tid":  snowTid,
+		"snow_cid":  snowCid,
+		"content":   content,
+		"timestamp": time.Now().UnixMilli(),
+	}
+	body, err := json.Marshal(message)
+	if err != nil {
+		logx.Errorf("sendRecommendInteraction marshal error: %v", err)
+		return
+	}
+	pusher := l.svcCtx.GetPusher("recommend_interaction")
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowTid), string(body)); err != nil {
+		logx.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

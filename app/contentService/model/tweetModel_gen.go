@@ -61,7 +61,7 @@ func newTweetModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *
 	return &defaultTweetModel{
 		CachedConn: sqlc.NewConn(conn, c, opts...),
 		table:      `"public"."tweet"`,
-		table2:     "public.tweet_normal_public", // 读表，分离读写
+		table2:     "public.tweet_public_normal", // 读表，分离读写（公开推文）
 		table3:     "public.tweet_normal",        // 读表，分离读写
 	}
 }

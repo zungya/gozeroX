@@ -39,9 +39,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	// Redis 客户端
 	redisClient := redis.MustNewRedis(redis.RedisConf{
-		Host: c.Redis.Host,
-		Pass: c.Redis.Pass,
-		Type: c.Redis.Type,
+		Host: c.RedisConf.Host,
+		Pass: c.RedisConf.Pass,
+		Type: c.RedisConf.Type,
 	})
 
 	// 缓存管理器
@@ -236,8 +236,16 @@ func (s *ServiceContext) BuildTweet(tweet *model.Tweet) *pb.Tweet {
 
 // IncrUserPostCount 增加用户发帖数
 func (s *ServiceContext) IncrUserPostCount(ctx context.Context, uid int64, delta int64) error {
-	// TODO: 调用 UserCenter RPC 更新用户发帖数
-	// 这里暂时只打印日志，实际需要调用 UserCenter 的接口
-	logx.Infof("IncrUserPostCount: uid=%d, delta=%d", uid, delta)
+	resp, err := s.UserCenterRpc.UpdateUserStats(ctx, &usercenter.UpdateUserStatsReq{
+		Uid:        uid,
+		UpdateType: 3, // 3=post_count
+		Delta:      delta,
+	})
+	if err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("UpdateUserStats failed: %s", resp.Msg)
+	}
 	return nil
 }

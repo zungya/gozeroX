@@ -81,6 +81,7 @@ func (l *LikeLogic) likeComment(req *types.LikeReq, uid int64, updateTime int64)
 		SnowLikesId: req.SnowLikesId,
 		Uid:         uid,
 		SnowCid:     req.TargetId,
+		SnowTid:     req.SnowTid,
 		Status:      req.Status,
 		UpdateTime:  updateTime,
 	})

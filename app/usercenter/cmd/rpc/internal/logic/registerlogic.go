@@ -70,24 +70,14 @@ func (l *RegisterLogic) Register(in *pb.RegisterReq) (*pb.RegisterResp, error) {
 		LastLoginAt: time.Now().UnixMilli(),
 	}
 
-	// 4. 插入数据库
-	result, err := l.svcCtx.UserModel.Insert(l.ctx, user)
+	// 4. 插入数据库（Insert 内部通过 RETURNING uid 设置 user.Uid）
+	_, err = l.svcCtx.UserModel.Insert(l.ctx, user)
 	if err != nil {
 		return &pb.RegisterResp{
 			Code: 1,
 			Msg:  "创建用户失败",
 		}, nil
 	}
-
-	// 5. 获取自增ID
-	uid, err := result.LastInsertId()
-	if err != nil {
-		return &pb.RegisterResp{
-			Code: 1,
-			Msg:  "获取用户ID失败",
-		}, nil
-	}
-	user.Uid = uid
 
 	// 6. 生成 JWT token（注册后直接登录）
 	token, expire, err := l.svcCtx.GenerateJwtToken(user.Uid)

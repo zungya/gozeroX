@@ -8,7 +8,7 @@ Prometheus:
   Port: 4004
   Path: /metrics
 
-Redis:
+RedisConf:
   Host: redis:6379
   Type: node
   Pass: mTRT1XBhk9VgWb9n
@@ -21,6 +21,10 @@ Cache:
     Pass: mTRT1XBhk9VgWb9n
     Type: node
 
+Kafka:
+  Addrs:
+    - kafka:9092
+
 Log:
   ServiceName: contentService-rpc
   Mode: console        # console, file, volume
@@ -28,3 +32,8 @@ Log:
   Path: logs          # 文件日志路径
   KeepDays: 7         # 保留天数
   StackCooldownMillis: 100  # 堆栈间隔
+
+UserCenterRpcConf:
+  Endpoints:
+    - 127.0.0.1:2001
+  NonBlock: true

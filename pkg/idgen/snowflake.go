@@ -2,6 +2,7 @@ package idgen
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -98,5 +99,5 @@ func GenIDStr() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(rune(id)), err
+	return strconv.FormatInt(id, 10), err
 }

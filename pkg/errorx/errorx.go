@@ -8,6 +8,7 @@ package errorx
 // 10: 用户模块 (User)
 // 11: 推文模块 (Post/Tweet)
 // 12: 互动模块 (Interaction)
+// 13: 通知模块 (Notice)
 // 99: 通用模块 (Common)
 
 // ==================== 通用错误码 (99xxxx) ====================
@@ -119,6 +120,25 @@ const (
 	ErrCodeReportLimit     = 120604 // 举报次数超限
 )
 
+// ==================== 通知模块错误码 (13xxxx) ====================
+const (
+	// 通知业务错误 1302xx
+	ErrCodeNoticeNotFound   = 130201 // 通知不存在
+	ErrCodeNoticeDBError    = 130202 // 通知数据库错误
+	ErrCodeNoticeCacheError = 130203 // 通知缓存错误
+)
+
+// ==================== 推荐模块错误码 (14xxxx) ====================
+const (
+	// 推荐参数错误 1401xx
+	ErrCodeRecommendLimitInvalid  = 140101 // 请求数量无效
+	ErrCodeRecommendCursorInvalid = 140102 // 游标无效
+
+	// 推荐业务错误 1402xx
+	ErrCodeRecommendServiceUnavailable = 140201 // Python推荐服务不可用
+	ErrCodeRecommendRecallFailed       = 140202 // 召回失败
+)
+
 // ==================== 错误码消息映射 ====================
 var codeMsgMap = map[int64]string{
 	// 通用错误
@@ -206,6 +226,17 @@ var codeMsgMap = map[int64]string{
 	ErrCodeAlreadyReported: "已经举报过了",
 	ErrCodeReportInvalid:   "举报原因无效",
 	ErrCodeReportLimit:     "举报次数超限",
+
+	// 通知模块
+	ErrCodeNoticeNotFound:   "通知不存在",
+	ErrCodeNoticeDBError:    "通知数据库错误",
+	ErrCodeNoticeCacheError: "通知缓存错误",
+
+	// 推荐模块
+	ErrCodeRecommendLimitInvalid:       "请求数量无效",
+	ErrCodeRecommendCursorInvalid:      "游标无效",
+	ErrCodeRecommendServiceUnavailable: "推荐服务暂不可用",
+	ErrCodeRecommendRecallFailed:       "推荐召回失败",
 }
 
 // GetMsg 获取错误码对应的消息

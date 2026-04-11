@@ -1,13 +1,19 @@
 go 1.26.1
 
 use (
-	.
 	./app/contentService/cmd/api
 	./app/contentService/cmd/rpc
 	./app/contentService/model
 	./app/interactService/cmd/api
+	./app/interactService/cmd/mq
 	./app/interactService/cmd/rpc
 	./app/interactService/model
+	./app/noticeService/cmd/api
+	./app/noticeService/cmd/mq
+	./app/noticeService/cmd/rpc
+	./app/noticeService/model
+	./app/recommendService/cmd/api
+	./app/recommendService/cmd/rpc
 	./app/usercenter/cmd/api
 	./app/usercenter/cmd/rpc
 	./app/usercenter/model

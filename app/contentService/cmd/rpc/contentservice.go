@@ -8,6 +8,7 @@ import (
 	"gozeroX/app/contentService/cmd/rpc/internal/server"
 	"gozeroX/app/contentService/cmd/rpc/internal/svc"
 	"gozeroX/app/contentService/cmd/rpc/pb"
+	"gozeroX/pkg/idgen"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -24,6 +25,11 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 	ctx := svc.NewServiceContext(c)
+
+	// 初始化雪花算法
+	if err := idgen.Init(1); err != nil {
+		panic(fmt.Sprintf("初始化雪花算法失败: %v", err))
+	}
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		pb.RegisterContentServer(grpcServer, server.NewContentServer(ctx))

@@ -745,8 +745,9 @@ type LikeCommentInfo struct {
 	SnowLikesId   int64                  `protobuf:"varint,1,opt,name=snow_likes_id,json=snowLikesId,proto3" json:"snow_likes_id,omitempty"`
 	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`
 	SnowCid       int64                  `protobuf:"varint,3,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"`
-	Status        int64                  `protobuf:"varint,4,opt,name=status,proto3" json:"status,omitempty"` // 1-点赞 0-取消
-	UpdateTime    int64                  `protobuf:"varint,5,opt,name=updateTime,proto3" json:"updateTime,omitempty"`
+	SnowTid       int64                  `protobuf:"varint,4,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
+	Status        int64                  `protobuf:"varint,5,opt,name=status,proto3" json:"status,omitempty"` // 1-点赞 0-取消
+	UpdateTime    int64                  `protobuf:"varint,6,opt,name=updateTime,proto3" json:"updateTime,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -798,6 +799,13 @@ func (x *LikeCommentInfo) GetUid() int64 {
 func (x *LikeCommentInfo) GetSnowCid() int64 {
 	if x != nil {
 		return x.SnowCid
+	}
+	return 0
+}
+
+func (x *LikeCommentInfo) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
 	}
 	return 0
 }
@@ -907,8 +915,9 @@ type LikeCommentReq struct {
 	SnowLikesId   int64                  `protobuf:"varint,2,opt,name=snow_likes_id,json=snowLikesId,proto3" json:"snow_likes_id,omitempty"`
 	Uid           int64                  `protobuf:"varint,3,opt,name=uid,proto3" json:"uid,omitempty"`
 	SnowCid       int64                  `protobuf:"varint,4,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"`
-	Status        int64                  `protobuf:"varint,5,opt,name=status,proto3" json:"status,omitempty"`
-	UpdateTime    int64                  `protobuf:"varint,6,opt,name=updateTime,proto3" json:"updateTime,omitempty"`
+	SnowTid       int64                  `protobuf:"varint,5,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
+	Status        int64                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
+	UpdateTime    int64                  `protobuf:"varint,7,opt,name=updateTime,proto3" json:"updateTime,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -967,6 +976,13 @@ func (x *LikeCommentReq) GetUid() int64 {
 func (x *LikeCommentReq) GetSnowCid() int64 {
 	if x != nil {
 		return x.SnowCid
+	}
+	return 0
+}
+
+func (x *LikeCommentReq) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
 	}
 	return 0
 }
@@ -1169,9 +1185,10 @@ func (x *UserTweetLike) GetStatus() int64 {
 // 用户评论点赞关系（用于前端本地存储）
 type UserCommentLike struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SnowCid       int64                  `protobuf:"varint,1,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"`               // 评论ID
-	SnowLikesId   int64                  `protobuf:"varint,2,opt,name=snow_likes_id,json=snowLikesId,proto3" json:"snow_likes_id,omitempty"` // 点赞记录ID
-	Status        int64                  `protobuf:"varint,3,opt,name=status,proto3" json:"status,omitempty"`                                // 1-已点赞，0-已取消
+	SnowTid       int64                  `protobuf:"varint,1,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`               // 评论ID
+	SnowCid       int64                  `protobuf:"varint,2,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"`               // 评论ID
+	SnowLikesId   int64                  `protobuf:"varint,3,opt,name=snow_likes_id,json=snowLikesId,proto3" json:"snow_likes_id,omitempty"` // 点赞记录ID
+	Status        int64                  `protobuf:"varint,4,opt,name=status,proto3" json:"status,omitempty"`                                // 1-已点赞，0-已取消
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1204,6 +1221,13 @@ func (x *UserCommentLike) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UserCommentLike.ProtoReflect.Descriptor instead.
 func (*UserCommentLike) Descriptor() ([]byte, []int) {
 	return file_pb_interactService_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UserCommentLike) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
+	}
+	return 0
 }
 
 func (x *UserCommentLike) GetSnowCid() int64 {
@@ -1413,14 +1437,15 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x06status\x18\x04 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
 	"updateTime\x18\x05 \x01(\x03R\n" +
-	"updateTime\"\x9a\x01\n" +
+	"updateTime\"\xb5\x01\n" +
 	"\x0fLikeCommentInfo\x12\"\n" +
 	"\rsnow_likes_id\x18\x01 \x01(\x03R\vsnowLikesId\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x19\n" +
-	"\bsnow_cid\x18\x03 \x01(\x03R\asnowCid\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\x03R\x06status\x12\x1e\n" +
+	"\bsnow_cid\x18\x03 \x01(\x03R\asnowCid\x12\x19\n" +
+	"\bsnow_tid\x18\x04 \x01(\x03R\asnowTid\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
-	"updateTime\x18\x05 \x01(\x03R\n" +
+	"updateTime\x18\x06 \x01(\x03R\n" +
 	"updateTime\"\xb6\x01\n" +
 	"\fLikeTweetReq\x12\x1d\n" +
 	"\n" +
@@ -1431,16 +1456,17 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x06status\x18\x05 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
 	"updateTime\x18\x06 \x01(\x03R\n" +
-	"updateTime\"\xb8\x01\n" +
+	"updateTime\"\xd3\x01\n" +
 	"\x0eLikeCommentReq\x12\x1d\n" +
 	"\n" +
 	"is_created\x18\x01 \x01(\x03R\tisCreated\x12\"\n" +
 	"\rsnow_likes_id\x18\x02 \x01(\x03R\vsnowLikesId\x12\x10\n" +
 	"\x03uid\x18\x03 \x01(\x03R\x03uid\x12\x19\n" +
-	"\bsnow_cid\x18\x04 \x01(\x03R\asnowCid\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\x03R\x06status\x12\x1e\n" +
+	"\bsnow_cid\x18\x04 \x01(\x03R\asnowCid\x12\x19\n" +
+	"\bsnow_tid\x18\x05 \x01(\x03R\asnowTid\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
-	"updateTime\x18\x06 \x01(\x03R\n" +
+	"updateTime\x18\a \x01(\x03R\n" +
 	"updateTime\"\\\n" +
 	"\rLikeTweetResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
@@ -1453,11 +1479,12 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\rUserTweetLike\x12\x19\n" +
 	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\"\n" +
 	"\rsnow_likes_id\x18\x02 \x01(\x03R\vsnowLikesId\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\x03R\x06status\"h\n" +
+	"\x06status\x18\x03 \x01(\x03R\x06status\"\x83\x01\n" +
 	"\x0fUserCommentLike\x12\x19\n" +
-	"\bsnow_cid\x18\x01 \x01(\x03R\asnowCid\x12\"\n" +
-	"\rsnow_likes_id\x18\x02 \x01(\x03R\vsnowLikesId\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\x03R\x06status\">\n" +
+	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x19\n" +
+	"\bsnow_cid\x18\x02 \x01(\x03R\asnowCid\x12\"\n" +
+	"\rsnow_likes_id\x18\x03 \x01(\x03R\vsnowLikesId\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\x03R\x06status\">\n" +
 	"\x12GetUserAllLikesReq\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\x03R\x06cursor\"\xa9\x01\n" +

@@ -86,11 +86,12 @@ type LikeInfo struct {
 }
 
 type LikeReq struct {
-	IsCreated   int64 `json:"isCreated"`          // 0-第一次操作（创建），1-非第一次（更新）
-	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID，第一次操作时为0，更新时传之前的ID
-	TargetType  int64 `json:"targetType"`         // 0-推文 1-评论
-	TargetId    int64 `json:"targetId,string"`    // 目标ID（推文ID或评论ID，雪花ID）
-	Status      int64 `json:"status"`             // 1-点赞 0-取消
+	IsCreated   int64 `json:"isCreated"`               // 0-第一次操作（创建），1-非第一次（更新）
+	SnowLikesId int64 `json:"snowLikesId,string"`      // 点赞记录ID，第一次操作时为0，更新时传之前的ID
+	TargetType  int64 `json:"targetType"`              // 0-推文 1-评论
+	TargetId    int64 `json:"targetId,string"`         // 目标ID（推文ID或评论ID，雪花ID）
+	SnowTid     int64 `json:"snowTid,string,optional"` // 评论点赞时传入：评论所属推文ID（推文点赞时忽略）
+	Status      int64 `json:"status"`                  // 1-点赞 0-取消
 }
 
 type LikeResp struct {
@@ -100,7 +101,8 @@ type LikeResp struct {
 }
 
 type UserCommentLike struct {
-	SnowCid     int64 `json:"snowCid,string"`     // 推文ID
+	SnowTid     int64 `json:"snowTid,string"`     // 评论所属推文ID
+	SnowCid     int64 `json:"snowCid,string"`     // 评论ID
 	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID
 	Status      int64 `json:"status"`             // 1-已点赞，0-已取消
 }

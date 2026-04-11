@@ -2,7 +2,9 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"gozeroX/app/contentService/cmd/rpc/internal/svc"
 	"gozeroX/app/contentService/cmd/rpc/pb"
@@ -93,10 +95,10 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 		}
 	}()
 
-	// 8. 异步发送删除推文消息到Kafka（消费者处理关联数据删除）
+	// 7.5 异步发送推文删除事件到 Kafka（推荐系统用）
 	go func() {
-		if err := l.svcCtx.SendDeleteTweetMessage(context.Background(), in.SnowTid, in.Uid); err != nil {
-			logx.Errorf("DeleteTweet SendDeleteTweetMessage error, snowTid:%d, err:%v", in.SnowTid, err)
+		if err := l.sendRecommendDeleteMessage(in.SnowTid); err != nil {
+			logx.Errorf("DeleteTweet sendRecommendDeleteMessage error, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 	}()
 
@@ -106,4 +108,20 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 		Code: 0,
 		Msg:  "删除成功",
 	}, nil
+}
+
+// sendRecommendDeleteMessage 发送推文删除消息到 Kafka recommend_tweet topic
+func (l *DeleteTweetLogic) sendRecommendDeleteMessage(snowTid int64) error {
+	message := map[string]interface{}{
+		"action":   "delete_tweet",
+		"snow_tid": snowTid,
+	}
+
+	body, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	pusher := l.svcCtx.GetPusher("recommend_tweet")
+	return pusher.PushWithKey(context.Background(), fmt.Sprintf("delete_%d", snowTid), string(body))
 }

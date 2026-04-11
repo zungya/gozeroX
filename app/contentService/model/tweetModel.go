@@ -21,6 +21,8 @@ type (
 		FindByUid(ctx context.Context, uid int64, isPublic *bool, cursor, limit int64, sortField, sortOrder string) ([]*Tweet, int64, error)
 		// UpdateStatus 更新推文状态
 		UpdateStatus(ctx context.Context, snowTid int64, status int64) error
+		// UpdateCount 原子更新推文计数字段（like_count 或 comment_count）
+		UpdateCount(ctx context.Context, snowTid int64, updateType int64, delta int64) error
 	}
 
 	customTweetModel struct {
@@ -51,7 +53,7 @@ func (m *customTweetModel) FindBatchBySnowTids(ctx context.Context, snowTids []i
 
 	// 查询公开且正常的推文
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE snow_tid IN (%s) AND is_public = true AND status = 0",
-		tweetRows, m.table2, strings.Join(placeholders, ","))
+		tweetRows, m.table, strings.Join(placeholders, ","))
 
 	var resp []*Tweet
 	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...)
@@ -119,11 +121,11 @@ func (m *customTweetModel) FindByUid(ctx context.Context, uid int64, isPublic *b
 		return nil, 0, err
 	}
 
-	// 5. 查询总数
+	// 5. 查询总数（复用前面的 args，但不包含 LIMIT 参数）
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", m.table3, whereClause)
 	var total int64
-	countArgs := make([]interface{}, argPos)
-	copy(countArgs, args[:argPos])
+	countArgs := make([]interface{}, argPos-1)
+	copy(countArgs, args[:argPos-1])
 	err = m.QueryRowNoCacheCtx(ctx, &total, countQuery, countArgs...)
 	if err != nil {
 		return nil, 0, err
@@ -136,5 +138,28 @@ func (m *customTweetModel) FindByUid(ctx context.Context, uid int64, isPublic *b
 func (m *customTweetModel) UpdateStatus(ctx context.Context, snowTid int64, status int64) error {
 	query := fmt.Sprintf("UPDATE %s SET status = $1 WHERE snow_tid = $2", m.table, status, snowTid)
 	_, err := m.ExecNoCacheCtx(ctx, query, status, snowTid)
+	return err
+}
+
+// UpdateCount 原子更新推文计数字段（like_count 或 comment_count）
+// updateType: 1=like_count, 2=comment_count
+func (m *customTweetModel) UpdateCount(ctx context.Context, snowTid int64, updateType int64, delta int64) error {
+	var field string
+	switch updateType {
+	case 1:
+		field = "like_count"
+	case 2:
+		field = "comment_count"
+	default:
+		return fmt.Errorf("unknown update type: %d", updateType)
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE %s
+		SET %s = %s + $1
+		WHERE snow_tid = $2
+	`, m.table, field, field)
+
+	_, err := m.ExecNoCacheCtx(ctx, query, delta, snowTid)
 	return err
 }

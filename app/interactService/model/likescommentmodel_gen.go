@@ -43,6 +43,7 @@ type (
 		SnowLikesId int64 `db:"snow_likes_id"` // 业务ID（前后端主要使用）
 		Uid         int64 `db:"uid"`           // 点赞用户ID
 		SnowCid     int64 `db:"snow_cid"`      // 评论ID
+		SnowTid     int64 `db:"snow_tid"`      // 评论所属推文ID（冗余字段，避免关联查询）
 		CreatedAt   int64 `db:"created_at"`    // 创建时间（毫秒级时间戳）
 		UpdatedAt   int64 `db:"updated_at"`    // 更新时间（毫秒级时间戳）
 		Status      int64 `db:"status"`        // 状态：1点赞，0取消
@@ -85,8 +86,8 @@ func (m *defaultLikesCommentModel) FindOne(ctx context.Context, snowLikesId int6
 func (m *defaultLikesCommentModel) Insert(ctx context.Context, data *LikesComment) (sql.Result, error) {
 	publicLikesCommentSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesCommentSnowLikesIdPrefix, data.SnowLikesId)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4)", m.table, likesCommentRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.SnowLikesId, data.Uid, data.SnowCid, data.Status)
+		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5)", m.table, likesCommentRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.SnowLikesId, data.Uid, data.SnowCid, data.SnowTid, data.Status)
 	}, publicLikesCommentSnowLikesIdKey)
 	return ret, err
 }
@@ -95,7 +96,7 @@ func (m *defaultLikesCommentModel) Update(ctx context.Context, data *LikesCommen
 	publicLikesCommentSnowLikesIdKey := fmt.Sprintf("%s%v", cachePublicLikesCommentSnowLikesIdPrefix, data.SnowLikesId)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where snow_likes_id = $1", m.table, likesCommentRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.SnowLikesId, data.Uid, data.SnowCid, data.Status)
+		return conn.ExecCtx(ctx, query, data.SnowLikesId, data.Uid, data.SnowCid, data.SnowTid, data.Status)
 	}, publicLikesCommentSnowLikesIdKey)
 	return err
 }
