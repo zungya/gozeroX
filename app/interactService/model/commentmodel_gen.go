@@ -44,8 +44,6 @@ type (
 		Cid        int64  `db:"cid"`         // 自增主键ID（仅用于查看计数，不使用）
 		SnowTid    int64  `db:"snow_tid"`    // 推文ID（雪花算法）
 		Uid        int64  `db:"uid"`         // 评论用户ID
-		ParentId   int64  `db:"parent_id"`   // 父评论ID（0表示顶级评论）
-		RootId     int64  `db:"root_id"`     // 根评论ID
 		Content    string `db:"content"`     // 评论内容
 		LikeCount  int64  `db:"like_count"`  // 点赞数
 		ReplyCount int64  `db:"reply_count"` // 回复数
@@ -91,8 +89,8 @@ func (m *defaultCommentModel) FindOne(ctx context.Context, snowCid int64) (*Comm
 func (m *defaultCommentModel) Insert(ctx context.Context, data *Comment) (sql.Result, error) {
 	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, data.SnowCid)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", m.table, commentRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.SnowCid, data.Cid, data.SnowTid, data.Uid, data.ParentId, data.RootId, data.Content, data.LikeCount, data.ReplyCount, data.Status)
+		query := fmt.Sprintf("insert into %s (%s) values ($1, $2, $3, $4, $5, $6, $7, $8)", m.table, commentRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.SnowCid, data.Cid, data.SnowTid, data.Uid, data.Content, data.LikeCount, data.ReplyCount, data.Status)
 	}, publicCommentSnowCidKey)
 	return ret, err
 }
@@ -101,7 +99,7 @@ func (m *defaultCommentModel) Update(ctx context.Context, data *Comment) error {
 	publicCommentSnowCidKey := fmt.Sprintf("%s%v", cachePublicCommentSnowCidPrefix, data.SnowCid)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where snow_cid = $1", m.table, commentRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.SnowCid, data.Cid, data.SnowTid, data.Uid, data.ParentId, data.RootId, data.Content, data.LikeCount, data.ReplyCount, data.Status)
+		return conn.ExecCtx(ctx, query, data.SnowCid, data.Cid, data.SnowTid, data.Uid, data.Content, data.LikeCount, data.ReplyCount, data.Status)
 	}, publicCommentSnowCidKey)
 	return err
 }

@@ -151,14 +151,14 @@ func (l *LikeCommentLogic) updateCommentLikeCount(snowCid int64, delta int) {
 
 // sendLikeCommentNotification 异步发送评论点赞通知到 Kafka notice topic
 func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTid int64, status int64) {
-	// 1. 获取评论作者UID（通知接收者）和 root_id
-	comment, err := l.svcCtx.GetCommentBySnowCid(context.Background(), snowCid)
+	// 1. 获取评论/回复作者UID（通知接收者）和 root_id
+	cr, err := l.svcCtx.GetCommentOrReplyBySnowCid(context.Background(), snowCid)
 	if err != nil {
-		logx.Errorf("sendLikeCommentNotification GetCommentBySnowCid error: %v", err)
+		logx.Errorf("sendLikeCommentNotification GetCommentOrReplyBySnowCid error: %v", err)
 		return
 	}
 	// 自己赞自己的评论不发通知
-	if comment.Uid == likerUid {
+	if cr.Uid == likerUid {
 		return
 	}
 
@@ -173,9 +173,9 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 		"target_type":   1,
 		"target_id":     snowCid,
 		"snow_tid":      snowTid,
-		"root_id":       comment.RootId,
+		"root_id":       cr.RootId,
 		"liker_uid":     likerUid,
-		"recipient_uid": comment.Uid,
+		"recipient_uid": cr.Uid,
 		"timestamp":     now,
 	}
 	body, err := json.Marshal(message)
@@ -186,7 +186,7 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 
 	// 3. 发送到 notice topic
 	pusher := l.svcCtx.GetPusher("notice")
-	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_comment_%d_%d", comment.Uid, snowCid), string(body)); err != nil {
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_comment_%d_%d", cr.Uid, snowCid), string(body)); err != nil {
 		logx.Errorf("sendLikeCommentNotification push error: %v", err)
 	}
 }

@@ -21,18 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 评论基础信息
+// 评论基础信息（根评论）
 type CommentInfo struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	SnowCid    int64                  `protobuf:"varint,1,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"` // 评论ID，使用雪花算法生成，保证全局唯一且有序，方便分页查询
-	SnowTid    int64                  `protobuf:"varint,2,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"` // 评论所属推文ID
-	Uid        int64                  `protobuf:"varint,3,opt,name=uid,proto3" json:"uid,omitempty"`                        // 评论用户ID
-	ParentId   int64                  `protobuf:"varint,4,opt,name=parentId,proto3" json:"parentId,omitempty"`              // 0表示顶级评论，否则为回复对象的snow_cid
-	RootId     int64                  `protobuf:"varint,5,opt,name=rootId,proto3" json:"rootId,omitempty"`                  // 顶级评论ID，方便查询一个评论树下的所有评论。顶级评论的rootId等于自己的snow_cid，回复评论的rootId等于它所在的顶级评论的snow_cid。
-	Content    string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`                 // 评论内容
-	LikeCount  int64                  `protobuf:"varint,7,opt,name=likeCount,proto3" json:"likeCount,omitempty"`            // 点赞总数
-	ReplyCount int64                  `protobuf:"varint,8,opt,name=replyCount,proto3" json:"replyCount,omitempty"`          // 回复总数
-	CreateTime int64                  `protobuf:"varint,9,opt,name=createTime,proto3" json:"createTime,omitempty"`          // 评论创建时间，毫秒级时间戳
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	SnowCid int64                  `protobuf:"varint,1,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"` // 评论ID，使用雪花算法生成，保证全局唯一且有序，方便分页查询
+	SnowTid int64                  `protobuf:"varint,2,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"` // 评论所属推文ID
+	Uid     int64                  `protobuf:"varint,3,opt,name=uid,proto3" json:"uid,omitempty"`                        // 评论用户ID
+	// parentId 和 rootId 已移除（根评论不需要）
+	Content    string `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`        // 评论内容
+	LikeCount  int64  `protobuf:"varint,7,opt,name=likeCount,proto3" json:"likeCount,omitempty"`   // 点赞总数
+	ReplyCount int64  `protobuf:"varint,8,opt,name=replyCount,proto3" json:"replyCount,omitempty"` // 回复总数
+	CreateTime int64  `protobuf:"varint,9,opt,name=createTime,proto3" json:"createTime,omitempty"` // 评论创建时间，毫秒级时间戳
 	// 以下字段不存储在数据库中，而是通过关联查询获取的额外信息
 	Nickname      string `protobuf:"bytes,10,opt,name=nickname,proto3" json:"nickname,omitempty"` // 评论用户昵称
 	Avatar        string `protobuf:"bytes,11,opt,name=avatar,proto3" json:"avatar,omitempty"`     // 评论用户头像
@@ -91,20 +90,6 @@ func (x *CommentInfo) GetUid() int64 {
 	return 0
 }
 
-func (x *CommentInfo) GetParentId() int64 {
-	if x != nil {
-		return x.ParentId
-	}
-	return 0
-}
-
-func (x *CommentInfo) GetRootId() int64 {
-	if x != nil {
-		return x.RootId
-	}
-	return 0
-}
-
 func (x *CommentInfo) GetContent() string {
 	if x != nil {
 		return x.Content
@@ -147,21 +132,144 @@ func (x *CommentInfo) GetAvatar() string {
 	return ""
 }
 
-// 创建评论
+// 回复基础信息（子评论）
+type ReplyInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SnowCid       int64                  `protobuf:"varint,1,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"` // 回复ID
+	SnowTid       int64                  `protobuf:"varint,2,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"` // 所属推文ID
+	Uid           int64                  `protobuf:"varint,3,opt,name=uid,proto3" json:"uid,omitempty"`                        // 回复用户ID
+	ParentId      int64                  `protobuf:"varint,4,opt,name=parentId,proto3" json:"parentId,omitempty"`              // 回复目标的 snow_cid（可以是根评论或另一个回复）
+	RootId        int64                  `protobuf:"varint,5,opt,name=rootId,proto3" json:"rootId,omitempty"`                  // 根评论的 snow_cid
+	Content       string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`                 // 回复内容
+	LikeCount     int64                  `protobuf:"varint,7,opt,name=likeCount,proto3" json:"likeCount,omitempty"`            // 点赞总数
+	ReplyCount    int64                  `protobuf:"varint,8,opt,name=replyCount,proto3" json:"replyCount,omitempty"`          // 回复总数
+	CreateTime    int64                  `protobuf:"varint,9,opt,name=createTime,proto3" json:"createTime,omitempty"`          // 创建时间，毫秒级时间戳
+	Nickname      string                 `protobuf:"bytes,10,opt,name=nickname,proto3" json:"nickname,omitempty"`              // 回复用户昵称
+	Avatar        string                 `protobuf:"bytes,11,opt,name=avatar,proto3" json:"avatar,omitempty"`                  // 回复用户头像
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReplyInfo) Reset() {
+	*x = ReplyInfo{}
+	mi := &file_pb_interactService_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReplyInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReplyInfo) ProtoMessage() {}
+
+func (x *ReplyInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_interactService_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReplyInfo.ProtoReflect.Descriptor instead.
+func (*ReplyInfo) Descriptor() ([]byte, []int) {
+	return file_pb_interactService_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ReplyInfo) GetSnowCid() int64 {
+	if x != nil {
+		return x.SnowCid
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetUid() int64 {
+	if x != nil {
+		return x.Uid
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetParentId() int64 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetRootId() int64 {
+	if x != nil {
+		return x.RootId
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *ReplyInfo) GetLikeCount() int64 {
+	if x != nil {
+		return x.LikeCount
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetReplyCount() int64 {
+	if x != nil {
+		return x.ReplyCount
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetCreateTime() int64 {
+	if x != nil {
+		return x.CreateTime
+	}
+	return 0
+}
+
+func (x *ReplyInfo) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *ReplyInfo) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+// 创建根评论
 type CreateCommentReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SnowTid       int64                  `protobuf:"varint,1,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
 	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`
 	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
-	ParentId      int64                  `protobuf:"varint,4,opt,name=parentId,proto3" json:"parentId,omitempty"` // 0表示顶级评论,否则为回复对象的snow_cid。
-	RootId        int64                  `protobuf:"varint,5,opt,name=rootId,proto3" json:"rootId,omitempty"`     // 顶级评论ID，如果parentId!=0,说明是回复评论，那么这个rootId应该已经是为它所在的顶级评论的snow_cid，否则是0，代表根评论
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateCommentReq) Reset() {
 	*x = CreateCommentReq{}
-	mi := &file_pb_interactService_proto_msgTypes[1]
+	mi := &file_pb_interactService_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -173,7 +281,7 @@ func (x *CreateCommentReq) String() string {
 func (*CreateCommentReq) ProtoMessage() {}
 
 func (x *CreateCommentReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[1]
+	mi := &file_pb_interactService_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -186,7 +294,7 @@ func (x *CreateCommentReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCommentReq.ProtoReflect.Descriptor instead.
 func (*CreateCommentReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{1}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateCommentReq) GetSnowTid() int64 {
@@ -210,20 +318,6 @@ func (x *CreateCommentReq) GetContent() string {
 	return ""
 }
 
-func (x *CreateCommentReq) GetParentId() int64 {
-	if x != nil {
-		return x.ParentId
-	}
-	return 0
-}
-
-func (x *CreateCommentReq) GetRootId() int64 {
-	if x != nil {
-		return x.RootId
-	}
-	return 0
-}
-
 type CreateCommentResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
@@ -235,7 +329,7 @@ type CreateCommentResp struct {
 
 func (x *CreateCommentResp) Reset() {
 	*x = CreateCommentResp{}
-	mi := &file_pb_interactService_proto_msgTypes[2]
+	mi := &file_pb_interactService_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -247,7 +341,7 @@ func (x *CreateCommentResp) String() string {
 func (*CreateCommentResp) ProtoMessage() {}
 
 func (x *CreateCommentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[2]
+	mi := &file_pb_interactService_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -260,7 +354,7 @@ func (x *CreateCommentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCommentResp.ProtoReflect.Descriptor instead.
 func (*CreateCommentResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{2}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateCommentResp) GetCode() int64 {
@@ -284,6 +378,143 @@ func (x *CreateCommentResp) GetComment() *CommentInfo {
 	return nil
 }
 
+// 创建回复（子评论）
+type CreateReplyReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SnowTid       int64                  `protobuf:"varint,1,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
+	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`
+	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	ParentId      int64                  `protobuf:"varint,4,opt,name=parentId,proto3" json:"parentId,omitempty"` // 回复目标的 snow_cid（可以是根评论或另一个回复）
+	RootId        int64                  `protobuf:"varint,5,opt,name=rootId,proto3" json:"rootId,omitempty"`     // 根评论的 snow_cid
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateReplyReq) Reset() {
+	*x = CreateReplyReq{}
+	mi := &file_pb_interactService_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateReplyReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateReplyReq) ProtoMessage() {}
+
+func (x *CreateReplyReq) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_interactService_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateReplyReq.ProtoReflect.Descriptor instead.
+func (*CreateReplyReq) Descriptor() ([]byte, []int) {
+	return file_pb_interactService_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CreateReplyReq) GetSnowTid() int64 {
+	if x != nil {
+		return x.SnowTid
+	}
+	return 0
+}
+
+func (x *CreateReplyReq) GetUid() int64 {
+	if x != nil {
+		return x.Uid
+	}
+	return 0
+}
+
+func (x *CreateReplyReq) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *CreateReplyReq) GetParentId() int64 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *CreateReplyReq) GetRootId() int64 {
+	if x != nil {
+		return x.RootId
+	}
+	return 0
+}
+
+type CreateReplyResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Reply         *ReplyInfo             `protobuf:"bytes,3,opt,name=reply,proto3" json:"reply,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateReplyResp) Reset() {
+	*x = CreateReplyResp{}
+	mi := &file_pb_interactService_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateReplyResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateReplyResp) ProtoMessage() {}
+
+func (x *CreateReplyResp) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_interactService_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateReplyResp.ProtoReflect.Descriptor instead.
+func (*CreateReplyResp) Descriptor() ([]byte, []int) {
+	return file_pb_interactService_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateReplyResp) GetCode() int64 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *CreateReplyResp) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
+func (x *CreateReplyResp) GetReply() *ReplyInfo {
+	if x != nil {
+		return x.Reply
+	}
+	return nil
+}
+
 // 删除评论
 type DeleteCommentReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -295,7 +526,7 @@ type DeleteCommentReq struct {
 
 func (x *DeleteCommentReq) Reset() {
 	*x = DeleteCommentReq{}
-	mi := &file_pb_interactService_proto_msgTypes[3]
+	mi := &file_pb_interactService_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -307,7 +538,7 @@ func (x *DeleteCommentReq) String() string {
 func (*DeleteCommentReq) ProtoMessage() {}
 
 func (x *DeleteCommentReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[3]
+	mi := &file_pb_interactService_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -320,7 +551,7 @@ func (x *DeleteCommentReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCommentReq.ProtoReflect.Descriptor instead.
 func (*DeleteCommentReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{3}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteCommentReq) GetSnowCid() int64 {
@@ -348,7 +579,7 @@ type DeleteCommentResp struct {
 
 func (x *DeleteCommentResp) Reset() {
 	*x = DeleteCommentResp{}
-	mi := &file_pb_interactService_proto_msgTypes[4]
+	mi := &file_pb_interactService_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -360,7 +591,7 @@ func (x *DeleteCommentResp) String() string {
 func (*DeleteCommentResp) ProtoMessage() {}
 
 func (x *DeleteCommentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[4]
+	mi := &file_pb_interactService_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -373,7 +604,7 @@ func (x *DeleteCommentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCommentResp.ProtoReflect.Descriptor instead.
 func (*DeleteCommentResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{4}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeleteCommentResp) GetCode() int64 {
@@ -410,7 +641,7 @@ type GetCommentsReq struct {
 
 func (x *GetCommentsReq) Reset() {
 	*x = GetCommentsReq{}
-	mi := &file_pb_interactService_proto_msgTypes[5]
+	mi := &file_pb_interactService_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -422,7 +653,7 @@ func (x *GetCommentsReq) String() string {
 func (*GetCommentsReq) ProtoMessage() {}
 
 func (x *GetCommentsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[5]
+	mi := &file_pb_interactService_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +666,7 @@ func (x *GetCommentsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCommentsReq.ProtoReflect.Descriptor instead.
 func (*GetCommentsReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{5}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetCommentsReq) GetSnowTid() int64 {
@@ -478,7 +709,7 @@ type GetCommentsResp struct {
 
 func (x *GetCommentsResp) Reset() {
 	*x = GetCommentsResp{}
-	mi := &file_pb_interactService_proto_msgTypes[6]
+	mi := &file_pb_interactService_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -490,7 +721,7 @@ func (x *GetCommentsResp) String() string {
 func (*GetCommentsResp) ProtoMessage() {}
 
 func (x *GetCommentsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[6]
+	mi := &file_pb_interactService_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -503,7 +734,7 @@ func (x *GetCommentsResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCommentsResp.ProtoReflect.Descriptor instead.
 func (*GetCommentsResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{6}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetCommentsResp) GetCode() int64 {
@@ -546,7 +777,7 @@ type GetRepliesReq struct {
 
 func (x *GetRepliesReq) Reset() {
 	*x = GetRepliesReq{}
-	mi := &file_pb_interactService_proto_msgTypes[7]
+	mi := &file_pb_interactService_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -558,7 +789,7 @@ func (x *GetRepliesReq) String() string {
 func (*GetRepliesReq) ProtoMessage() {}
 
 func (x *GetRepliesReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[7]
+	mi := &file_pb_interactService_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -571,7 +802,7 @@ func (x *GetRepliesReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRepliesReq.ProtoReflect.Descriptor instead.
 func (*GetRepliesReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{7}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetRepliesReq) GetRootCid() int64 {
@@ -599,7 +830,7 @@ type GetRepliesResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
 	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
-	Replies       []*CommentInfo         `protobuf:"bytes,3,rep,name=replies,proto3" json:"replies,omitempty"`
+	Replies       []*ReplyInfo           `protobuf:"bytes,3,rep,name=replies,proto3" json:"replies,omitempty"`
 	Total         int64                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -607,7 +838,7 @@ type GetRepliesResp struct {
 
 func (x *GetRepliesResp) Reset() {
 	*x = GetRepliesResp{}
-	mi := &file_pb_interactService_proto_msgTypes[8]
+	mi := &file_pb_interactService_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +850,7 @@ func (x *GetRepliesResp) String() string {
 func (*GetRepliesResp) ProtoMessage() {}
 
 func (x *GetRepliesResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[8]
+	mi := &file_pb_interactService_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +863,7 @@ func (x *GetRepliesResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRepliesResp.ProtoReflect.Descriptor instead.
 func (*GetRepliesResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{8}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetRepliesResp) GetCode() int64 {
@@ -649,7 +880,7 @@ func (x *GetRepliesResp) GetMsg() string {
 	return ""
 }
 
-func (x *GetRepliesResp) GetReplies() []*CommentInfo {
+func (x *GetRepliesResp) GetReplies() []*ReplyInfo {
 	if x != nil {
 		return x.Replies
 	}
@@ -677,7 +908,7 @@ type LikeTweetInfo struct {
 
 func (x *LikeTweetInfo) Reset() {
 	*x = LikeTweetInfo{}
-	mi := &file_pb_interactService_proto_msgTypes[9]
+	mi := &file_pb_interactService_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -689,7 +920,7 @@ func (x *LikeTweetInfo) String() string {
 func (*LikeTweetInfo) ProtoMessage() {}
 
 func (x *LikeTweetInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[9]
+	mi := &file_pb_interactService_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -702,7 +933,7 @@ func (x *LikeTweetInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeTweetInfo.ProtoReflect.Descriptor instead.
 func (*LikeTweetInfo) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{9}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *LikeTweetInfo) GetSnowLikesId() int64 {
@@ -754,7 +985,7 @@ type LikeCommentInfo struct {
 
 func (x *LikeCommentInfo) Reset() {
 	*x = LikeCommentInfo{}
-	mi := &file_pb_interactService_proto_msgTypes[10]
+	mi := &file_pb_interactService_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -766,7 +997,7 @@ func (x *LikeCommentInfo) String() string {
 func (*LikeCommentInfo) ProtoMessage() {}
 
 func (x *LikeCommentInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[10]
+	mi := &file_pb_interactService_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -779,7 +1010,7 @@ func (x *LikeCommentInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeCommentInfo.ProtoReflect.Descriptor instead.
 func (*LikeCommentInfo) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{10}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *LikeCommentInfo) GetSnowLikesId() int64 {
@@ -839,7 +1070,7 @@ type LikeTweetReq struct {
 
 func (x *LikeTweetReq) Reset() {
 	*x = LikeTweetReq{}
-	mi := &file_pb_interactService_proto_msgTypes[11]
+	mi := &file_pb_interactService_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -851,7 +1082,7 @@ func (x *LikeTweetReq) String() string {
 func (*LikeTweetReq) ProtoMessage() {}
 
 func (x *LikeTweetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[11]
+	mi := &file_pb_interactService_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -864,7 +1095,7 @@ func (x *LikeTweetReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeTweetReq.ProtoReflect.Descriptor instead.
 func (*LikeTweetReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{11}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *LikeTweetReq) GetIsCreated() int64 {
@@ -924,7 +1155,7 @@ type LikeCommentReq struct {
 
 func (x *LikeCommentReq) Reset() {
 	*x = LikeCommentReq{}
-	mi := &file_pb_interactService_proto_msgTypes[12]
+	mi := &file_pb_interactService_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -936,7 +1167,7 @@ func (x *LikeCommentReq) String() string {
 func (*LikeCommentReq) ProtoMessage() {}
 
 func (x *LikeCommentReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[12]
+	mi := &file_pb_interactService_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -949,7 +1180,7 @@ func (x *LikeCommentReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeCommentReq.ProtoReflect.Descriptor instead.
 func (*LikeCommentReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{12}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *LikeCommentReq) GetIsCreated() int64 {
@@ -1012,7 +1243,7 @@ type LikeTweetResp struct {
 
 func (x *LikeTweetResp) Reset() {
 	*x = LikeTweetResp{}
-	mi := &file_pb_interactService_proto_msgTypes[13]
+	mi := &file_pb_interactService_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1024,7 +1255,7 @@ func (x *LikeTweetResp) String() string {
 func (*LikeTweetResp) ProtoMessage() {}
 
 func (x *LikeTweetResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[13]
+	mi := &file_pb_interactService_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1037,7 +1268,7 @@ func (x *LikeTweetResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeTweetResp.ProtoReflect.Descriptor instead.
 func (*LikeTweetResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{13}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *LikeTweetResp) GetCode() int64 {
@@ -1072,7 +1303,7 @@ type LikeCommentResp struct {
 
 func (x *LikeCommentResp) Reset() {
 	*x = LikeCommentResp{}
-	mi := &file_pb_interactService_proto_msgTypes[14]
+	mi := &file_pb_interactService_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1315,7 @@ func (x *LikeCommentResp) String() string {
 func (*LikeCommentResp) ProtoMessage() {}
 
 func (x *LikeCommentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[14]
+	mi := &file_pb_interactService_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1328,7 @@ func (x *LikeCommentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeCommentResp.ProtoReflect.Descriptor instead.
 func (*LikeCommentResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{14}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *LikeCommentResp) GetCode() int64 {
@@ -1133,7 +1364,7 @@ type UserTweetLike struct {
 
 func (x *UserTweetLike) Reset() {
 	*x = UserTweetLike{}
-	mi := &file_pb_interactService_proto_msgTypes[15]
+	mi := &file_pb_interactService_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1145,7 +1376,7 @@ func (x *UserTweetLike) String() string {
 func (*UserTweetLike) ProtoMessage() {}
 
 func (x *UserTweetLike) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[15]
+	mi := &file_pb_interactService_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1158,7 +1389,7 @@ func (x *UserTweetLike) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserTweetLike.ProtoReflect.Descriptor instead.
 func (*UserTweetLike) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{15}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UserTweetLike) GetSnowTid() int64 {
@@ -1195,7 +1426,7 @@ type UserCommentLike struct {
 
 func (x *UserCommentLike) Reset() {
 	*x = UserCommentLike{}
-	mi := &file_pb_interactService_proto_msgTypes[16]
+	mi := &file_pb_interactService_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1207,7 +1438,7 @@ func (x *UserCommentLike) String() string {
 func (*UserCommentLike) ProtoMessage() {}
 
 func (x *UserCommentLike) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[16]
+	mi := &file_pb_interactService_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1220,7 +1451,7 @@ func (x *UserCommentLike) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserCommentLike.ProtoReflect.Descriptor instead.
 func (*UserCommentLike) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{16}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UserCommentLike) GetSnowTid() int64 {
@@ -1262,7 +1493,7 @@ type GetUserAllLikesReq struct {
 
 func (x *GetUserAllLikesReq) Reset() {
 	*x = GetUserAllLikesReq{}
-	mi := &file_pb_interactService_proto_msgTypes[17]
+	mi := &file_pb_interactService_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1274,7 +1505,7 @@ func (x *GetUserAllLikesReq) String() string {
 func (*GetUserAllLikesReq) ProtoMessage() {}
 
 func (x *GetUserAllLikesReq) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[17]
+	mi := &file_pb_interactService_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1287,7 +1518,7 @@ func (x *GetUserAllLikesReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserAllLikesReq.ProtoReflect.Descriptor instead.
 func (*GetUserAllLikesReq) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{17}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetUserAllLikesReq) GetUid() int64 {
@@ -1316,7 +1547,7 @@ type GetUserAllLikesResp struct {
 
 func (x *GetUserAllLikesResp) Reset() {
 	*x = GetUserAllLikesResp{}
-	mi := &file_pb_interactService_proto_msgTypes[18]
+	mi := &file_pb_interactService_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1328,7 +1559,7 @@ func (x *GetUserAllLikesResp) String() string {
 func (*GetUserAllLikesResp) ProtoMessage() {}
 
 func (x *GetUserAllLikesResp) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_interactService_proto_msgTypes[18]
+	mi := &file_pb_interactService_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1341,7 +1572,7 @@ func (x *GetUserAllLikesResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserAllLikesResp.ProtoReflect.Descriptor instead.
 func (*GetUserAllLikesResp) Descriptor() ([]byte, []int) {
-	return file_pb_interactService_proto_rawDescGZIP(), []int{18}
+	return file_pb_interactService_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetUserAllLikesResp) GetCode() int64 {
@@ -1376,8 +1607,23 @@ var File_pb_interactService_proto protoreflect.FileDescriptor
 
 const file_pb_interactService_proto_rawDesc = "" +
 	"\n" +
-	"\x18pb/interactService.proto\x12\x02pb\"\xb5\x02\n" +
+	"\x18pb/interactService.proto\x12\x02pb\"\x81\x02\n" +
 	"\vCommentInfo\x12\x19\n" +
+	"\bsnow_cid\x18\x01 \x01(\x03R\asnowCid\x12\x19\n" +
+	"\bsnow_tid\x18\x02 \x01(\x03R\asnowTid\x12\x10\n" +
+	"\x03uid\x18\x03 \x01(\x03R\x03uid\x12\x18\n" +
+	"\acontent\x18\x06 \x01(\tR\acontent\x12\x1c\n" +
+	"\tlikeCount\x18\a \x01(\x03R\tlikeCount\x12\x1e\n" +
+	"\n" +
+	"replyCount\x18\b \x01(\x03R\n" +
+	"replyCount\x12\x1e\n" +
+	"\n" +
+	"createTime\x18\t \x01(\x03R\n" +
+	"createTime\x12\x1a\n" +
+	"\bnickname\x18\n" +
+	" \x01(\tR\bnickname\x12\x16\n" +
+	"\x06avatar\x18\v \x01(\tR\x06avatar\"\xb3\x02\n" +
+	"\tReplyInfo\x12\x19\n" +
 	"\bsnow_cid\x18\x01 \x01(\x03R\asnowCid\x12\x19\n" +
 	"\bsnow_tid\x18\x02 \x01(\x03R\asnowTid\x12\x10\n" +
 	"\x03uid\x18\x03 \x01(\x03R\x03uid\x12\x1a\n" +
@@ -1393,17 +1639,25 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"createTime\x12\x1a\n" +
 	"\bnickname\x18\n" +
 	" \x01(\tR\bnickname\x12\x16\n" +
-	"\x06avatar\x18\v \x01(\tR\x06avatar\"\x8d\x01\n" +
+	"\x06avatar\x18\v \x01(\tR\x06avatar\"Y\n" +
 	"\x10CreateCommentReq\x12\x19\n" +
+	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x10\n" +
+	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\"d\n" +
+	"\x11CreateCommentResp\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
+	"\acomment\x18\x03 \x01(\v2\x0f.pb.CommentInfoR\acomment\"\x8b\x01\n" +
+	"\x0eCreateReplyReq\x12\x19\n" +
 	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x12\x1a\n" +
 	"\bparentId\x18\x04 \x01(\x03R\bparentId\x12\x16\n" +
-	"\x06rootId\x18\x05 \x01(\x03R\x06rootId\"d\n" +
-	"\x11CreateCommentResp\x12\x12\n" +
+	"\x06rootId\x18\x05 \x01(\x03R\x06rootId\"\\\n" +
+	"\x0fCreateReplyResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
-	"\acomment\x18\x03 \x01(\v2\x0f.pb.CommentInfoR\acomment\"?\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12#\n" +
+	"\x05reply\x18\x03 \x01(\v2\r.pb.ReplyInfoR\x05reply\"?\n" +
 	"\x10DeleteCommentReq\x12\x19\n" +
 	"\bsnow_cid\x18\x01 \x01(\x03R\asnowCid\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\"S\n" +
@@ -1424,11 +1678,11 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\rGetRepliesReq\x12\x19\n" +
 	"\broot_cid\x18\x01 \x01(\x03R\arootCid\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\x03R\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x03R\x05limit\"w\n" +
+	"\x05limit\x18\x03 \x01(\x03R\x05limit\"u\n" +
 	"\x0eGetRepliesResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msg\x12)\n" +
-	"\areplies\x18\x03 \x03(\v2\x0f.pb.CommentInfoR\areplies\x12\x14\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\x12'\n" +
+	"\areplies\x18\x03 \x03(\v2\r.pb.ReplyInfoR\areplies\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x03R\x05total\"\x98\x01\n" +
 	"\rLikeTweetInfo\x12\"\n" +
 	"\rsnow_likes_id\x18\x01 \x01(\x03R\vsnowLikesId\x12\x10\n" +
@@ -1493,9 +1747,10 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x122\n" +
 	"\vtweet_likes\x18\x03 \x03(\v2\x11.pb.UserTweetLikeR\n" +
 	"tweetLikes\x128\n" +
-	"\rcomment_likes\x18\x04 \x03(\v2\x13.pb.UserCommentLikeR\fcommentLikes2\xa4\x03\n" +
+	"\rcomment_likes\x18\x04 \x03(\v2\x13.pb.UserCommentLikeR\fcommentLikes2\xdc\x03\n" +
 	"\vInteraction\x12<\n" +
-	"\rCreateComment\x12\x14.pb.CreateCommentReq\x1a\x15.pb.CreateCommentResp\x12<\n" +
+	"\rCreateComment\x12\x14.pb.CreateCommentReq\x1a\x15.pb.CreateCommentResp\x126\n" +
+	"\vCreateReply\x12\x12.pb.CreateReplyReq\x1a\x13.pb.CreateReplyResp\x12<\n" +
 	"\rDeleteComment\x12\x14.pb.DeleteCommentReq\x1a\x15.pb.DeleteCommentResp\x126\n" +
 	"\vGetComments\x12\x12.pb.GetCommentsReq\x1a\x13.pb.GetCommentsResp\x123\n" +
 	"\n" +
@@ -1516,55 +1771,61 @@ func file_pb_interactService_proto_rawDescGZIP() []byte {
 	return file_pb_interactService_proto_rawDescData
 }
 
-var file_pb_interactService_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_pb_interactService_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_pb_interactService_proto_goTypes = []any{
 	(*CommentInfo)(nil),         // 0: pb.CommentInfo
-	(*CreateCommentReq)(nil),    // 1: pb.CreateCommentReq
-	(*CreateCommentResp)(nil),   // 2: pb.CreateCommentResp
-	(*DeleteCommentReq)(nil),    // 3: pb.DeleteCommentReq
-	(*DeleteCommentResp)(nil),   // 4: pb.DeleteCommentResp
-	(*GetCommentsReq)(nil),      // 5: pb.GetCommentsReq
-	(*GetCommentsResp)(nil),     // 6: pb.GetCommentsResp
-	(*GetRepliesReq)(nil),       // 7: pb.GetRepliesReq
-	(*GetRepliesResp)(nil),      // 8: pb.GetRepliesResp
-	(*LikeTweetInfo)(nil),       // 9: pb.LikeTweetInfo
-	(*LikeCommentInfo)(nil),     // 10: pb.LikeCommentInfo
-	(*LikeTweetReq)(nil),        // 11: pb.LikeTweetReq
-	(*LikeCommentReq)(nil),      // 12: pb.LikeCommentReq
-	(*LikeTweetResp)(nil),       // 13: pb.LikeTweetResp
-	(*LikeCommentResp)(nil),     // 14: pb.LikeCommentResp
-	(*UserTweetLike)(nil),       // 15: pb.UserTweetLike
-	(*UserCommentLike)(nil),     // 16: pb.UserCommentLike
-	(*GetUserAllLikesReq)(nil),  // 17: pb.GetUserAllLikesReq
-	(*GetUserAllLikesResp)(nil), // 18: pb.GetUserAllLikesResp
+	(*ReplyInfo)(nil),           // 1: pb.ReplyInfo
+	(*CreateCommentReq)(nil),    // 2: pb.CreateCommentReq
+	(*CreateCommentResp)(nil),   // 3: pb.CreateCommentResp
+	(*CreateReplyReq)(nil),      // 4: pb.CreateReplyReq
+	(*CreateReplyResp)(nil),     // 5: pb.CreateReplyResp
+	(*DeleteCommentReq)(nil),    // 6: pb.DeleteCommentReq
+	(*DeleteCommentResp)(nil),   // 7: pb.DeleteCommentResp
+	(*GetCommentsReq)(nil),      // 8: pb.GetCommentsReq
+	(*GetCommentsResp)(nil),     // 9: pb.GetCommentsResp
+	(*GetRepliesReq)(nil),       // 10: pb.GetRepliesReq
+	(*GetRepliesResp)(nil),      // 11: pb.GetRepliesResp
+	(*LikeTweetInfo)(nil),       // 12: pb.LikeTweetInfo
+	(*LikeCommentInfo)(nil),     // 13: pb.LikeCommentInfo
+	(*LikeTweetReq)(nil),        // 14: pb.LikeTweetReq
+	(*LikeCommentReq)(nil),      // 15: pb.LikeCommentReq
+	(*LikeTweetResp)(nil),       // 16: pb.LikeTweetResp
+	(*LikeCommentResp)(nil),     // 17: pb.LikeCommentResp
+	(*UserTweetLike)(nil),       // 18: pb.UserTweetLike
+	(*UserCommentLike)(nil),     // 19: pb.UserCommentLike
+	(*GetUserAllLikesReq)(nil),  // 20: pb.GetUserAllLikesReq
+	(*GetUserAllLikesResp)(nil), // 21: pb.GetUserAllLikesResp
 }
 var file_pb_interactService_proto_depIdxs = []int32{
 	0,  // 0: pb.CreateCommentResp.comment:type_name -> pb.CommentInfo
-	0,  // 1: pb.GetCommentsResp.comments:type_name -> pb.CommentInfo
-	0,  // 2: pb.GetRepliesResp.replies:type_name -> pb.CommentInfo
-	9,  // 3: pb.LikeTweetResp.like:type_name -> pb.LikeTweetInfo
-	10, // 4: pb.LikeCommentResp.like:type_name -> pb.LikeCommentInfo
-	15, // 5: pb.GetUserAllLikesResp.tweet_likes:type_name -> pb.UserTweetLike
-	16, // 6: pb.GetUserAllLikesResp.comment_likes:type_name -> pb.UserCommentLike
-	1,  // 7: pb.Interaction.CreateComment:input_type -> pb.CreateCommentReq
-	3,  // 8: pb.Interaction.DeleteComment:input_type -> pb.DeleteCommentReq
-	5,  // 9: pb.Interaction.GetComments:input_type -> pb.GetCommentsReq
-	7,  // 10: pb.Interaction.GetReplies:input_type -> pb.GetRepliesReq
-	11, // 11: pb.Interaction.LikeTweet:input_type -> pb.LikeTweetReq
-	12, // 12: pb.Interaction.LikeComment:input_type -> pb.LikeCommentReq
-	17, // 13: pb.Interaction.GetUserAllLikes:input_type -> pb.GetUserAllLikesReq
-	2,  // 14: pb.Interaction.CreateComment:output_type -> pb.CreateCommentResp
-	4,  // 15: pb.Interaction.DeleteComment:output_type -> pb.DeleteCommentResp
-	6,  // 16: pb.Interaction.GetComments:output_type -> pb.GetCommentsResp
-	8,  // 17: pb.Interaction.GetReplies:output_type -> pb.GetRepliesResp
-	13, // 18: pb.Interaction.LikeTweet:output_type -> pb.LikeTweetResp
-	14, // 19: pb.Interaction.LikeComment:output_type -> pb.LikeCommentResp
-	18, // 20: pb.Interaction.GetUserAllLikes:output_type -> pb.GetUserAllLikesResp
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	1,  // 1: pb.CreateReplyResp.reply:type_name -> pb.ReplyInfo
+	0,  // 2: pb.GetCommentsResp.comments:type_name -> pb.CommentInfo
+	1,  // 3: pb.GetRepliesResp.replies:type_name -> pb.ReplyInfo
+	12, // 4: pb.LikeTweetResp.like:type_name -> pb.LikeTweetInfo
+	13, // 5: pb.LikeCommentResp.like:type_name -> pb.LikeCommentInfo
+	18, // 6: pb.GetUserAllLikesResp.tweet_likes:type_name -> pb.UserTweetLike
+	19, // 7: pb.GetUserAllLikesResp.comment_likes:type_name -> pb.UserCommentLike
+	2,  // 8: pb.Interaction.CreateComment:input_type -> pb.CreateCommentReq
+	4,  // 9: pb.Interaction.CreateReply:input_type -> pb.CreateReplyReq
+	6,  // 10: pb.Interaction.DeleteComment:input_type -> pb.DeleteCommentReq
+	8,  // 11: pb.Interaction.GetComments:input_type -> pb.GetCommentsReq
+	10, // 12: pb.Interaction.GetReplies:input_type -> pb.GetRepliesReq
+	14, // 13: pb.Interaction.LikeTweet:input_type -> pb.LikeTweetReq
+	15, // 14: pb.Interaction.LikeComment:input_type -> pb.LikeCommentReq
+	20, // 15: pb.Interaction.GetUserAllLikes:input_type -> pb.GetUserAllLikesReq
+	3,  // 16: pb.Interaction.CreateComment:output_type -> pb.CreateCommentResp
+	5,  // 17: pb.Interaction.CreateReply:output_type -> pb.CreateReplyResp
+	7,  // 18: pb.Interaction.DeleteComment:output_type -> pb.DeleteCommentResp
+	9,  // 19: pb.Interaction.GetComments:output_type -> pb.GetCommentsResp
+	11, // 20: pb.Interaction.GetReplies:output_type -> pb.GetRepliesResp
+	16, // 21: pb.Interaction.LikeTweet:output_type -> pb.LikeTweetResp
+	17, // 22: pb.Interaction.LikeComment:output_type -> pb.LikeCommentResp
+	21, // 23: pb.Interaction.GetUserAllLikes:output_type -> pb.GetUserAllLikesResp
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_pb_interactService_proto_init() }
@@ -1578,7 +1839,7 @@ func file_pb_interactService_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_interactService_proto_rawDesc), len(file_pb_interactService_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

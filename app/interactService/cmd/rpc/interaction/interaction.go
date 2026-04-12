@@ -17,6 +17,8 @@ type (
 	CommentInfo         = pb.CommentInfo
 	CreateCommentReq    = pb.CreateCommentReq
 	CreateCommentResp   = pb.CreateCommentResp
+	CreateReplyReq      = pb.CreateReplyReq
+	CreateReplyResp     = pb.CreateReplyResp
 	DeleteCommentReq    = pb.DeleteCommentReq
 	DeleteCommentResp   = pb.DeleteCommentResp
 	GetCommentsReq      = pb.GetCommentsReq
@@ -31,12 +33,14 @@ type (
 	LikeTweetInfo       = pb.LikeTweetInfo
 	LikeTweetReq        = pb.LikeTweetReq
 	LikeTweetResp       = pb.LikeTweetResp
+	ReplyInfo           = pb.ReplyInfo
 	UserCommentLike     = pb.UserCommentLike
 	UserTweetLike       = pb.UserTweetLike
 
 	Interaction interface {
 		// 评论服务
 		CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error)
+		CreateReply(ctx context.Context, in *CreateReplyReq, opts ...grpc.CallOption) (*CreateReplyResp, error)
 		DeleteComment(ctx context.Context, in *DeleteCommentReq, opts ...grpc.CallOption) (*DeleteCommentResp, error)
 		GetComments(ctx context.Context, in *GetCommentsReq, opts ...grpc.CallOption) (*GetCommentsResp, error)
 		GetReplies(ctx context.Context, in *GetRepliesReq, opts ...grpc.CallOption) (*GetRepliesResp, error)
@@ -62,6 +66,11 @@ func NewInteraction(cli zrpc.Client) Interaction {
 func (m *defaultInteraction) CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error) {
 	client := pb.NewInteractionClient(m.cli.Conn())
 	return client.CreateComment(ctx, in, opts...)
+}
+
+func (m *defaultInteraction) CreateReply(ctx context.Context, in *CreateReplyReq, opts ...grpc.CallOption) (*CreateReplyResp, error) {
+	client := pb.NewInteractionClient(m.cli.Conn())
+	return client.CreateReply(ctx, in, opts...)
 }
 
 func (m *defaultInteraction) DeleteComment(ctx context.Context, in *DeleteCommentReq, opts ...grpc.CallOption) (*DeleteCommentResp, error) {

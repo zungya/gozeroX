@@ -128,8 +128,6 @@ func (l *GetCommentsLogic) GetComments(in *pb.GetCommentsReq) (*pb.GetCommentsRe
 			SnowCid:    c.SnowCid,
 			SnowTid:    c.SnowTid,
 			Uid:        c.Uid,
-			ParentId:   c.ParentId,
-			RootId:     c.RootId,
 			Content:    c.Content,
 			LikeCount:  c.LikeCount,
 			ReplyCount: c.ReplyCount,

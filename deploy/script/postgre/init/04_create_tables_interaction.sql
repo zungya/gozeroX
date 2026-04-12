@@ -11,8 +11,6 @@ CREATE TABLE IF NOT EXISTS comment (
     cid BIGSERIAL NOT NULL,
     snow_tid BIGINT NOT NULL,
     uid BIGINT NOT NULL,
-    parent_id BIGINT NOT NULL DEFAULT 0,
-    root_id BIGINT NOT NULL DEFAULT 0,
     content TEXT NOT NULL,
     like_count BIGINT NOT NULL DEFAULT 0,
     reply_count BIGINT NOT NULL DEFAULT 0,
@@ -24,20 +22,16 @@ CREATE TABLE IF NOT EXISTS comment (
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_comment_snow_tid ON comment(snow_tid);
 CREATE INDEX IF NOT EXISTS idx_comment_uid ON comment(uid);
-CREATE INDEX IF NOT EXISTS idx_comment_parent_id ON comment(parent_id);
-CREATE INDEX IF NOT EXISTS idx_comment_root_id ON comment(root_id);
 CREATE INDEX IF NOT EXISTS idx_comment_status ON comment(status);
 CREATE INDEX IF NOT EXISTS idx_comment_snow_tid_status ON comment(snow_tid, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comment_created_at ON comment(created_at DESC);
 
 -- 注释
-COMMENT ON TABLE comment IS '评论表';
+COMMENT ON TABLE comment IS '评论表（仅根评论）';
 COMMENT ON COLUMN comment.snow_cid IS '业务主键ID（雪花算法）';
 COMMENT ON COLUMN comment.cid IS '自增主键ID（仅用于查看计数，不使用）';
 COMMENT ON COLUMN comment.snow_tid IS '推文ID（雪花算法）';
 COMMENT ON COLUMN comment.uid IS '评论用户ID';
-COMMENT ON COLUMN comment.parent_id IS '父评论ID（0表示顶级评论）';
-COMMENT ON COLUMN comment.root_id IS '根评论ID';
 COMMENT ON COLUMN comment.content IS '评论内容';
 COMMENT ON COLUMN comment.like_count IS '点赞数';
 COMMENT ON COLUMN comment.reply_count IS '回复数';
@@ -50,6 +44,46 @@ CREATE VIEW comment_normal AS
 SELECT * FROM comment WHERE status = 0;
 
 COMMENT ON VIEW comment_normal IS '正常状态评论视图（自动过滤status=0）';
+
+
+-- ==================== Reply 表 ====================
+CREATE TABLE IF NOT EXISTS reply (
+    snow_cid BIGINT NOT NULL PRIMARY KEY,
+    cid BIGSERIAL NOT NULL,
+    snow_tid BIGINT NOT NULL,
+    uid BIGINT NOT NULL,
+    parent_id BIGINT NOT NULL DEFAULT 0,
+    root_id BIGINT NOT NULL DEFAULT 0,
+    content TEXT NOT NULL,
+    like_count BIGINT NOT NULL DEFAULT 0,
+    reply_count BIGINT NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+    updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+    status SMALLINT NOT NULL DEFAULT 0 CHECK (status IN (0, 1, 2))
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_reply_snow_tid ON reply(snow_tid);
+CREATE INDEX IF NOT EXISTS idx_reply_uid ON reply(uid);
+CREATE INDEX IF NOT EXISTS idx_reply_parent_id ON reply(parent_id);
+CREATE INDEX IF NOT EXISTS idx_reply_root_id ON reply(root_id);
+CREATE INDEX IF NOT EXISTS idx_reply_status ON reply(status);
+CREATE INDEX IF NOT EXISTS idx_reply_root_id_status ON reply(root_id, status, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_reply_created_at ON reply(created_at ASC);
+
+-- 注释
+COMMENT ON TABLE reply IS '回复表（子评论）';
+COMMENT ON COLUMN reply.snow_cid IS '业务主键ID（雪花算法）';
+COMMENT ON COLUMN reply.snow_tid IS '推文ID（雪花算法）';
+COMMENT ON COLUMN reply.uid IS '回复用户ID';
+COMMENT ON COLUMN reply.parent_id IS '父评论/回复ID（comment 或 reply 的 snow_cid）';
+COMMENT ON COLUMN reply.root_id IS '根评论ID（comment 表的 snow_cid）';
+COMMENT ON COLUMN reply.content IS '回复内容';
+COMMENT ON COLUMN reply.like_count IS '点赞数';
+COMMENT ON COLUMN reply.reply_count IS '回复数';
+COMMENT ON COLUMN reply.created_at IS '创建时间（毫秒级时间戳）';
+COMMENT ON COLUMN reply.updated_at IS '更新时间（毫秒级时间戳）';
+COMMENT ON COLUMN reply.status IS '状态：0正常，1删除，2审核中';
 
 
 -- ==================== Likes Tweet 表 ====================

@@ -29,6 +29,11 @@ func (s *InteractionServer) CreateComment(ctx context.Context, in *pb.CreateComm
 	return l.CreateComment(in)
 }
 
+func (s *InteractionServer) CreateReply(ctx context.Context, in *pb.CreateReplyReq) (*pb.CreateReplyResp, error) {
+	l := logic.NewCreateReplyLogic(ctx, s.svcCtx)
+	return l.CreateReply(in)
+}
+
 func (s *InteractionServer) DeleteComment(ctx context.Context, in *pb.DeleteCommentReq) (*pb.DeleteCommentResp, error) {
 	l := logic.NewDeleteCommentLogic(ctx, s.svcCtx)
 	return l.DeleteComment(in)

@@ -34,7 +34,7 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 		return &pb.GetRepliesResp{
 			Code:    120301,
 			Msg:     "根评论ID不能为空",
-			Replies: []*pb.CommentInfo{},
+			Replies: []*pb.ReplyInfo{},
 			Total:   0,
 		}, nil
 	}
@@ -52,7 +52,7 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 		return &pb.GetRepliesResp{
 			Code:    0,
 			Msg:     "success",
-			Replies: []*pb.CommentInfo{},
+			Replies: []*pb.ReplyInfo{},
 			Total:   0,
 		}, nil
 	}
@@ -61,10 +61,10 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 	allReplies := l.batchGetReplies(replySnowCids)
 
 	// 5. 过滤有效回复（status=0）
-	validReplies := make([]*model.Comment, 0, len(allReplies))
-	for _, c := range allReplies {
-		if c.Status == 0 {
-			validReplies = append(validReplies, c)
+	validReplies := make([]*model.Reply, 0, len(allReplies))
+	for _, r := range allReplies {
+		if r.Status == 0 {
+			validReplies = append(validReplies, r)
 		}
 	}
 
@@ -76,19 +76,17 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 	total := int64(len(validReplies))
 
 	// 7. cursor分页
-	var pageReplies []*model.Comment
+	var pageReplies []*model.Reply
 	if in.Cursor == 0 {
-		// 第一次请求
 		if total > limit {
 			pageReplies = validReplies[:limit]
 		} else {
 			pageReplies = validReplies
 		}
 	} else {
-		// 后续请求，找到cursor位置
 		startIdx := -1
-		for i, c := range validReplies {
-			if c.CreatedAt > in.Cursor {
+		for i, r := range validReplies {
+			if r.CreatedAt > in.Cursor {
 				startIdx = i
 				break
 			}
@@ -104,8 +102,8 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 
 	// 8. 批量获取用户信息
 	uidMap := make(map[int64]bool)
-	for _, c := range pageReplies {
-		uidMap[c.Uid] = true
+	for _, r := range pageReplies {
+		uidMap[r.Uid] = true
 	}
 	uids := make([]int64, 0, len(uidMap))
 	for uid := range uidMap {
@@ -126,26 +124,26 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 		}
 	}
 
-	// 9. 转换为PB返回格式
-	replyInfos := make([]*pb.CommentInfo, 0, len(pageReplies))
-	for _, c := range pageReplies {
+	// 9. 转换为PB返回格式（使用 ReplyInfo）
+	replyInfos := make([]*pb.ReplyInfo, 0, len(pageReplies))
+	for _, r := range pageReplies {
 		nickname := "用户"
 		avatar := ""
-		if user, ok := userBriefMap[c.Uid]; ok {
+		if user, ok := userBriefMap[r.Uid]; ok {
 			nickname = user.Nickname
 			avatar = user.Avatar
 		}
 
-		replyInfos = append(replyInfos, &pb.CommentInfo{
-			SnowCid:    c.SnowCid,
-			SnowTid:    c.SnowTid,
-			Uid:        c.Uid,
-			ParentId:   c.ParentId,
-			RootId:     c.RootId,
-			Content:    c.Content,
-			LikeCount:  c.LikeCount,
-			ReplyCount: c.ReplyCount,
-			CreateTime: c.CreatedAt,
+		replyInfos = append(replyInfos, &pb.ReplyInfo{
+			SnowCid:    r.SnowCid,
+			SnowTid:    r.SnowTid,
+			Uid:        r.Uid,
+			ParentId:   r.ParentId,
+			RootId:     r.RootId,
+			Content:    r.Content,
+			LikeCount:  r.LikeCount,
+			ReplyCount: r.ReplyCount,
+			CreateTime: r.CreatedAt,
 			Nickname:   nickname,
 			Avatar:     avatar,
 		})
@@ -163,11 +161,11 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 }
 
 // batchGetReplies 批量获取回复（先缓存后DB）
-func (l *GetRepliesLogic) batchGetReplies(snowCids []int64) []*model.Comment {
-	result := make([]*model.Comment, 0, len(snowCids))
+func (l *GetRepliesLogic) batchGetReplies(snowCids []int64) []*model.Reply {
+	result := make([]*model.Reply, 0, len(snowCids))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 20) // 限制并发
+	sem := make(chan struct{}, 20)
 
 	for _, snowCid := range snowCids {
 		sem <- struct{}{}
@@ -178,13 +176,13 @@ func (l *GetRepliesLogic) batchGetReplies(snowCids []int64) []*model.Comment {
 				<-sem
 			}()
 
-			comment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, cid)
+			reply, err := l.svcCtx.GetReplyBySnowCid(l.ctx, cid)
 			if err != nil {
 				return
 			}
 
 			mu.Lock()
-			result = append(result, comment)
+			result = append(result, reply)
 			mu.Unlock()
 		}(snowCid)
 	}

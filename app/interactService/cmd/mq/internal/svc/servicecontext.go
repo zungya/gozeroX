@@ -12,6 +12,7 @@ import (
 type ServiceContext struct {
 	Config            config.Config
 	CommentModel      model.CommentModel
+	ReplyModel        model.ReplyModel
 	LikesTweetModel   model.LikesTweetModel
 	LikesCommentModel model.LikesCommentModel
 	UserLikeSyncModel model.UserLikeSyncModel
@@ -24,6 +25,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:            c,
 		CommentModel:      model.NewCommentModel(sqlConn, c.Cache),
+		ReplyModel:        model.NewReplyModel(sqlConn, c.Cache),
 		LikesTweetModel:   model.NewLikesTweetModel(sqlConn, c.Cache),
 		LikesCommentModel: model.NewLikesCommentModel(sqlConn, c.Cache),
 		UserLikeSyncModel: model.NewUserLikeSyncModel(sqlConn, c.Cache),

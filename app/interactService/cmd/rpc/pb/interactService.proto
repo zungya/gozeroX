@@ -6,13 +6,12 @@ option go_package = "./pb";
 
 // ==================== 评论相关 ====================
 
-// 评论基础信息
+// 评论基础信息（根评论）
 message CommentInfo {
   int64 snow_cid = 1;       // 评论ID，使用雪花算法生成，保证全局唯一且有序，方便分页查询
   int64 snow_tid = 2;       // 评论所属推文ID
   int64 uid = 3;            // 评论用户ID
-  int64 parentId = 4;       // 0表示顶级评论，否则为回复对象的snow_cid
-  int64 rootId = 5;         // 顶级评论ID，方便查询一个评论树下的所有评论。顶级评论的rootId等于自己的snow_cid，回复评论的rootId等于它所在的顶级评论的snow_cid。
+  // parentId 和 rootId 已移除（根评论不需要）
   string content = 6;       // 评论内容
   int64 likeCount = 7;      // 点赞总数
   int64 replyCount = 8;     // 回复总数
@@ -23,20 +22,48 @@ message CommentInfo {
   string avatar = 11;       // 评论用户头像
 }
 
-// 创建评论
+// 回复基础信息（子评论）
+message ReplyInfo {
+  int64 snow_cid = 1;       // 回复ID
+  int64 snow_tid = 2;       // 所属推文ID
+  int64 uid = 3;            // 回复用户ID
+  int64 parentId = 4;       // 回复目标的 snow_cid（可以是根评论或另一个回复）
+  int64 rootId = 5;         // 根评论的 snow_cid
+  string content = 6;       // 回复内容
+  int64 likeCount = 7;      // 点赞总数
+  int64 replyCount = 8;     // 回复总数
+  int64 createTime = 9;     // 创建时间，毫秒级时间戳
+
+  string nickname = 10;     // 回复用户昵称
+  string avatar = 11;       // 回复用户头像
+}
+
+// 创建根评论
 message CreateCommentReq {
   int64 snow_tid = 1;
   int64 uid = 2;
   string content = 3;
-  int64 parentId = 4;       // 0表示顶级评论,否则为回复对象的snow_cid。
-  int64 rootId = 5;         // 顶级评论ID，如果parentId!=0,说明是回复评论，那么这个rootId应该已经是为它所在的顶级评论的snow_cid，否则是0，代表根评论
-  // 业务逻辑：如果parentId=0，说明是顶级评论，那么rootId也应该设置为0；如果parentId不为0，说明是回复评论，那么此处rootId就是根评论id，将这个rootId设置到新评论的rootId字段中。这样就能保证同一评论树下的所有评论都有相同的rootId，方便后续查询整个评论树。
 }
 
 message CreateCommentResp {
   int64 code = 1;
   string msg = 2;
   CommentInfo comment = 3;
+}
+
+// 创建回复（子评论）
+message CreateReplyReq {
+  int64 snow_tid = 1;
+  int64 uid = 2;
+  string content = 3;
+  int64 parentId = 4;       // 回复目标的 snow_cid（可以是根评论或另一个回复）
+  int64 rootId = 5;         // 根评论的 snow_cid
+}
+
+message CreateReplyResp {
+  int64 code = 1;
+  string msg = 2;
+  ReplyInfo reply = 3;
 }
 
 // 删除评论
@@ -76,7 +103,7 @@ message GetRepliesReq {
 message GetRepliesResp {
   int64 code = 1;
   string msg = 2;
-  repeated CommentInfo replies = 3;
+  repeated ReplyInfo replies = 3;
   int64 total = 4;
 }
 
@@ -167,6 +194,7 @@ message GetUserAllLikesResp {
 service Interaction {
   // 评论服务
   rpc CreateComment(CreateCommentReq) returns (CreateCommentResp);
+  rpc CreateReply(CreateReplyReq) returns (CreateReplyResp);
   rpc DeleteComment(DeleteCommentReq) returns (DeleteCommentResp);
   rpc GetComments(GetCommentsReq) returns (GetCommentsResp);
   rpc GetReplies(GetRepliesReq) returns (GetRepliesResp);

@@ -33,21 +33,22 @@ func (c *CommentConsumer) Consume(ctx context.Context, key, value string) error 
 	action, _ := msg["action"].(string)
 	switch action {
 	case "create_comment":
-		return c.handleCreate(ctx, msg)
+		return c.handleCreateComment(ctx, msg)
+	case "create_reply":
+		return c.handleCreateReply(ctx, msg)
 	default:
 		logx.Errorf("CommentConsumer unknown action: %s", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }
 
-func (c *CommentConsumer) handleCreate(ctx context.Context, msg map[string]interface{}) error {
+// handleCreateComment 处理根评论创建（无 parent_id/root_id）
+func (c *CommentConsumer) handleCreateComment(ctx context.Context, msg map[string]interface{}) error {
 	comment := &model.Comment{
 		SnowCid:    toInt64(msg["snow_cid"]),
-		Cid:        0, // BIGSERIAL 自增，MQ 消费不关心
+		Cid:        0,
 		SnowTid:    toInt64(msg["snow_tid"]),
 		Uid:        toInt64(msg["uid"]),
-		ParentId:   toInt64(msg["parent_id"]),
-		RootId:     toInt64(msg["root_id"]),
 		Content:    toString(msg["content"]),
 		LikeCount:  toInt64(msg["like_count"]),
 		ReplyCount: toInt64(msg["reply_count"]),
@@ -60,14 +61,41 @@ func (c *CommentConsumer) handleCreate(ctx context.Context, msg map[string]inter
 		return err
 	}
 
-	logx.Infof("CommentConsumer insert success, snowCid:%d, snowTid:%d", comment.SnowCid, comment.SnowTid)
+	logx.Infof("CommentConsumer insert comment success, snowCid:%d, snowTid:%d", comment.SnowCid, comment.SnowTid)
 
 	// 更新推文评论数（DB）
 	c.updateTweetCommentCount(ctx, comment.SnowTid, 1)
-	// 如果是回复，还要更新父评论的回复数（DB）
-	if comment.ParentId != 0 {
-		c.updateParentReplyCount(ctx, comment.ParentId, 1)
+
+	return nil
+}
+
+// handleCreateReply 处理回复创建
+func (c *CommentConsumer) handleCreateReply(ctx context.Context, msg map[string]interface{}) error {
+	reply := &model.Reply{
+		SnowCid:    toInt64(msg["snow_cid"]),
+		Cid:        0,
+		SnowTid:    toInt64(msg["snow_tid"]),
+		Uid:        toInt64(msg["uid"]),
+		ParentId:   toInt64(msg["parent_id"]),
+		RootId:     toInt64(msg["root_id"]),
+		Content:    toString(msg["content"]),
+		LikeCount:  toInt64(msg["like_count"]),
+		ReplyCount: toInt64(msg["reply_count"]),
+		Status:     toInt64(msg["status"]),
 	}
+
+	_, err := c.svcCtx.ReplyModel.Insert(ctx, reply)
+	if err != nil {
+		logx.Errorf("CommentConsumer insert reply error, snowCid:%d, err:%v", reply.SnowCid, err)
+		return err
+	}
+
+	logx.Infof("CommentConsumer insert reply success, snowCid:%d, snowTid:%d, rootId:%d", reply.SnowCid, reply.SnowTid, reply.RootId)
+
+	// 更新推文评论数（DB）
+	c.updateTweetCommentCount(ctx, reply.SnowTid, 1)
+	// 更新父评论的回复数（DB）
+	c.updateParentReplyCount(ctx, reply.ParentId, 1)
 
 	return nil
 }

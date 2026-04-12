@@ -29,7 +29,7 @@ func NewCreateCommentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Cre
 	}
 }
 
-// CreateComment 创建评论（write-behind模式）
+// CreateComment 创建根评论（write-behind模式）
 func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateCommentResp, error) {
 	// 1. 生成雪花ID作为业务主键
 	snowCid, err := idgen.GenID()
@@ -41,14 +41,12 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		}, nil
 	}
 
-	// 2. 构建评论对象（时间用毫秒戳）
+	// 2. 构建评论对象（根评论，无 ParentId/RootId）
 	now := time.Now().UnixMilli()
 	comment := &model.Comment{
 		SnowCid:    snowCid,
 		SnowTid:    in.SnowTid,
 		Uid:        in.Uid,
-		ParentId:   in.ParentId,
-		RootId:     in.RootId,
 		Content:    in.Content,
 		LikeCount:  0,
 		ReplyCount: 0,
@@ -57,19 +55,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		UpdatedAt:  now,
 	}
 
-	// 3. 处理rootId逻辑
-	if in.ParentId != 0 {
-		// 父评论的rootId如果是0，说明父评论是顶级评论,则使用父评论的SnowCid作为rootId，否则就说明父评论不是根评论，直接使用rootId
-		if in.RootId == 0 {
-			comment.RootId = in.ParentId
-		} else {
-			comment.RootId = in.RootId
-		}
-	} else {
-		comment.RootId = 0 // 顶级评论，rootId为0
-	}
-
-	// 4. 先写缓存
+	// 3. 先写缓存
 	if err := l.svcCtx.SetCommentToCache(l.ctx, snowCid, comment); err != nil {
 		logx.Errorf("CreateComment SetCommentToCache errorx, snowCid:%d, err:%v", snowCid, err)
 		return &pb.CreateCommentResp{
@@ -78,63 +64,37 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		}, nil
 	}
 
-	// 5. 更新相关缓存计数和列表
-	if in.ParentId == 0 {
-		// 顶级评论：添加到推文的顶级评论列表
-		go func() {
-			// 增加推文评论数
-			if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
-				logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
-			}
-			// 添加到顶级评论Set
-			_ = l.svcCtx.CacheManager.SAdd(
-				context.Background(),
-				"tweet",
-				"top_comments",
-				in.SnowTid,
-				snowCid,
-			)
-		}()
-	} else {
-		// 回复评论：增加父评论的回复数，添加到回复列表
-		go func() {
-			if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
-				logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
-			}
-			if err := l.svcCtx.IncrCommentReplyCount(l.ctx, in.ParentId, 1); err != nil {
-				logx.Errorf("CreateComment incr comment reply count errorx, parentId:%d, err:%v", in.ParentId, err)
-			}
-			// 添加到回复Set（使用rootId作为key）
-			if comment.RootId != 0 {
-				_ = l.svcCtx.CacheManager.SAdd(
-					context.Background(),
-					"comment",
-					"replies",
-					comment.RootId,
-					snowCid,
-				)
-				_ = l.svcCtx.CacheManager.Expire(context.Background(), "comment", "replies", comment.RootId, 1800)
-			}
-		}()
-	}
+	// 4. 更新缓存计数和列表
+	go func() {
+		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
+			logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
+		}
+		_ = l.svcCtx.CacheManager.SAdd(
+			context.Background(),
+			"tweet",
+			"top_comments",
+			in.SnowTid,
+			snowCid,
+		)
+	}()
 
-	// 6. 发送go-queue消息，异步落库
+	// 5. 发送Kafka消息，异步落库
 	if err := l.sendCreateCommentMessage(comment); err != nil {
 		logx.Errorf("CreateComment send queue message errorx, snowCid:%d, err:%v", snowCid, err)
 		go l.recordFailedMessage(comment)
 	}
 
-	// 6.5 异步发送评论通知（不影响主流程）
+	// 6. 异步通知推文作者
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendCommentNotification panic: %v", r)
+				logx.Errorf("sendTweetCommentNotification panic: %v", r)
 			}
 		}()
-		l.sendCommentNotification(comment)
+		l.sendTweetCommentNotification(comment)
 	}()
 
-	// 6.6 异步发送评论互动事件到 Kafka（推荐系统用）
+	// 7. 异步发送互动事件到 Kafka（推荐系统用）
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -144,14 +104,13 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		l.sendRecommendInteraction("comment_tweet", comment.Uid, comment.SnowTid, comment.SnowCid, comment.Content)
 	}()
 
-	// 7. 调用 usercenter RPC 获取用户信息（昵称、头像）
+	// 8. 调用 usercenter RPC 获取用户信息（昵称、头像）
 	var nickname, avatar string
 	userInfoResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{
 		Uid: comment.Uid,
 	})
 	if err != nil {
 		logx.Errorf("CreateComment GetUserInfo RPC errorx, uid:%d, err:%v", comment.Uid, err)
-		// RPC 调用失败不影响主流程，使用默认值
 		nickname = "用户"
 		avatar = ""
 	} else if userInfoResp.Code == 0 && userInfoResp.UserInfo != nil {
@@ -159,13 +118,11 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		avatar = userInfoResp.UserInfo.Avatar
 	}
 
-	// 8. 构建返回的CommentInfo对象
+	// 9. 构建返回的CommentInfo对象
 	commentInfo := &pb.CommentInfo{
 		SnowCid:    snowCid,
 		SnowTid:    comment.SnowTid,
 		Uid:        comment.Uid,
-		ParentId:   comment.ParentId,
-		RootId:     comment.RootId,
 		Content:    comment.Content,
 		LikeCount:  comment.LikeCount,
 		ReplyCount: comment.ReplyCount,
@@ -188,8 +145,6 @@ func (l *CreateCommentLogic) sendCreateCommentMessage(comment *model.Comment) er
 		"snow_cid":    comment.SnowCid,
 		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
-		"parent_id":   comment.ParentId,
-		"root_id":     comment.RootId,
 		"content":     comment.Content,
 		"status":      comment.Status,
 		"created_at":  comment.CreatedAt,
@@ -213,8 +168,6 @@ func (l *CreateCommentLogic) recordFailedMessage(comment *model.Comment) {
 		"snow_cid":    comment.SnowCid,
 		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
-		"parent_id":   comment.ParentId,
-		"root_id":     comment.RootId,
 		"content":     comment.Content,
 		"created_at":  comment.CreatedAt,
 		"retry_count": 0,
@@ -228,18 +181,7 @@ func (l *CreateCommentLogic) recordFailedMessage(comment *model.Comment) {
 	}
 }
 
-// sendCommentNotification 异步发送评论通知到 Kafka notice topic
-func (l *CreateCommentLogic) sendCommentNotification(comment *model.Comment) {
-	if comment.ParentId == 0 {
-		// 顶级评论：通知推文作者
-		l.sendTweetCommentNotification(comment)
-	} else {
-		// 回复评论：通知被回复的评论作者
-		l.sendReplyCommentNotification(comment)
-	}
-}
-
-// sendTweetCommentNotification 顶级评论通知
+// sendTweetCommentNotification 根评论通知推文作者
 func (l *CreateCommentLogic) sendTweetCommentNotification(comment *model.Comment) {
 	// 获取推文作者UID
 	recipientUid, err := l.svcCtx.GetTweetAuthorUid(context.Background(), comment.SnowTid)
@@ -265,48 +207,14 @@ func (l *CreateCommentLogic) sendTweetCommentNotification(comment *model.Comment
 		"replied_content": "",
 		"timestamp":       comment.CreatedAt,
 	}
-	l.pushNoticeMessage(message, fmt.Sprintf("comment_%d_%d", recipientUid, comment.SnowCid))
-}
-
-// sendReplyCommentNotification 回复评论通知
-func (l *CreateCommentLogic) sendReplyCommentNotification(comment *model.Comment) {
-	// 获取父评论作者UID和内容
-	parentComment, err := l.svcCtx.GetCommentBySnowCid(context.Background(), comment.ParentId)
-	if err != nil {
-		logx.Errorf("sendReplyCommentNotification GetCommentBySnowCid error, parentId:%d, err:%v", comment.ParentId, err)
-		return
-	}
-	// 自己回复自己的评论不发通知
-	if parentComment.Uid == comment.Uid {
-		return
-	}
-
-	message := map[string]interface{}{
-		"action":          "reply_comment",
-		"target_type":     1,
-		"commenter_uid":   comment.Uid,
-		"recipient_uid":   parentComment.Uid,
-		"snow_tid":        comment.SnowTid,
-		"snow_cid":        comment.SnowCid,
-		"root_id":         comment.RootId,
-		"parent_id":       comment.ParentId,
-		"content":         comment.Content,
-		"replied_content": parentComment.Content,
-		"timestamp":       comment.CreatedAt,
-	}
-	l.pushNoticeMessage(message, fmt.Sprintf("reply_%d_%d", parentComment.Uid, comment.SnowCid))
-}
-
-// pushNoticeMessage 发送通知消息到 Kafka notice topic
-func (l *CreateCommentLogic) pushNoticeMessage(message map[string]interface{}, key string) {
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("pushNoticeMessage marshal error: %v", err)
+		logx.Errorf("sendTweetCommentNotification marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("notice")
-	if err := pusher.PushWithKey(context.Background(), key, string(body)); err != nil {
-		logx.Errorf("pushNoticeMessage push error, key:%s, err:%v", key, err)
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("comment_%d_%d", recipientUid, comment.SnowCid), string(body)); err != nil {
+		logx.Errorf("sendTweetCommentNotification push error: %v", err)
 	}
 }
 

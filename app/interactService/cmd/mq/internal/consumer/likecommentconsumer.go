@@ -97,13 +97,19 @@ func (c *LikeCommentConsumer) handleUpdate(ctx context.Context, msg map[string]i
 	return nil
 }
 
-// updateCommentLikeCount 更新评论的点赞计数
+// updateCommentLikeCount 更新评论的点赞计数（先尝试 comment 表，再尝试 reply 表）
 func (c *LikeCommentConsumer) updateCommentLikeCount(ctx context.Context, snowCid int64, delta int64) {
 	if snowCid == 0 {
 		return
 	}
-	if err := c.svcCtx.CommentModel.UpdateCount(ctx, snowCid, 1, delta); err != nil {
-		logx.Errorf("LikeCommentConsumer updateCommentLikeCount error, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+	// 先尝试更新 comment 表
+	err := c.svcCtx.CommentModel.UpdateCount(ctx, snowCid, 1, delta)
+	if err != nil {
+		// comment 表没找到，尝试 reply 表
+		err = c.svcCtx.ReplyModel.UpdateCount(ctx, snowCid, 1, delta)
+		if err != nil {
+			logx.Errorf("LikeCommentConsumer updateCommentLikeCount error, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+		}
 	}
 }
 

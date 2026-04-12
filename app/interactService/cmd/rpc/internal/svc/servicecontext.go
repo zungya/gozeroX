@@ -20,11 +20,28 @@ import (
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
+// CommentOrReply 统一返回结构（用于 snow_cid 可能在 comment 或 reply 表的场景）
+type CommentOrReply struct {
+	SnowCid    int64
+	SnowTid    int64
+	Uid        int64
+	ParentId   int64
+	RootId     int64
+	Content    string
+	LikeCount  int64
+	ReplyCount int64
+	Status     int64
+	CreatedAt  int64
+	UpdatedAt  int64
+	IsReply    bool // true = 在 reply 表
+}
+
 type ServiceContext struct {
 	Config            config.Config
 	RedisClient       *redis.Redis
 	CacheManager      *cache.Manager
 	CommentModel      model.CommentModel
+	ReplyModel        model.ReplyModel
 	LikesTweetModel   model.LikesTweetModel
 	LikesCommentModel model.LikesCommentModel
 	UserLikeSyncModel model.UserLikeSyncModel
@@ -55,6 +72,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		RedisClient:       redisClient,
 		CacheManager:      cacheManager,
 		CommentModel:      model.NewCommentModel(sqlConn, c.Cache),
+		ReplyModel:        model.NewReplyModel(sqlConn, c.Cache),
 		LikesTweetModel:   model.NewLikesTweetModel(sqlConn, c.Cache),
 		LikesCommentModel: model.NewLikesCommentModel(sqlConn, c.Cache),
 		UserLikeSyncModel: model.NewUserLikeSyncModel(sqlConn, c.Cache),
@@ -106,14 +124,14 @@ func (s *ServiceContext) Close() {
 	}
 }
 
-// SetCommentToCache 将评论存入缓存（时间用int64毫秒戳）
+// ==================== Comment 缓存 ====================
+
+// SetCommentToCache 将根评论存入缓存
 func (s *ServiceContext) SetCommentToCache(ctx context.Context, snowCid int64, comment *model.Comment) error {
 	fields := map[string]interface{}{
 		"snow_cid":    comment.SnowCid,
 		"snow_tid":    comment.SnowTid,
 		"uid":         comment.Uid,
-		"parent_id":   comment.ParentId,
-		"root_id":     comment.RootId,
 		"content":     comment.Content,
 		"status":      comment.Status,
 		"created_at":  comment.CreatedAt,
@@ -134,7 +152,7 @@ func (s *ServiceContext) SetCommentToCache(ctx context.Context, snowCid int64, c
 	return nil
 }
 
-// GetCommentFromCache 从Hash缓存获取评论
+// GetCommentFromCache 从Hash缓存获取根评论
 func (s *ServiceContext) GetCommentFromCache(ctx context.Context, snowCid int64) (*model.Comment, error) {
 	fields, err := s.CacheManager.HGetAll(ctx, "comment", "info", snowCid)
 	if err != nil {
@@ -156,12 +174,6 @@ func (s *ServiceContext) GetCommentFromCache(ctx context.Context, snowCid int64)
 	}
 	if v, ok := fields["uid"]; ok {
 		comment.Uid, _ = strconv.ParseInt(v, 10, 64)
-	}
-	if v, ok := fields["parent_id"]; ok {
-		comment.ParentId, _ = strconv.ParseInt(v, 10, 64)
-	}
-	if v, ok := fields["root_id"]; ok {
-		comment.RootId, _ = strconv.ParseInt(v, 10, 64)
 	}
 	if v, ok := fields["content"]; ok {
 		comment.Content = v
@@ -201,13 +213,7 @@ func (s *ServiceContext) DelCommentCache(ctx context.Context, snowCid int64) {
 	}
 }
 
-// IncrTweetCommentCount 增加推文评论数（推文缓存由contentService管理，这里只是辅助方法）
-func (s *ServiceContext) IncrTweetCommentCount(ctx context.Context, snowTid int64, delta int) error {
-	_, err := s.CacheManager.HIncrBy(ctx, "tweet", "info", snowTid, "comment_count", delta)
-	return err
-}
-
-// GetCommentBySnowCid 根据雪花ID获取评论（先缓存后DB）
+// GetCommentBySnowCid 根据雪花ID获取根评论（先缓存后DB）
 func (s *ServiceContext) GetCommentBySnowCid(ctx context.Context, snowCid int64) (*model.Comment, error) {
 	// 1. 先从缓存获取
 	comment, err := s.GetCommentFromCache(ctx, snowCid)
@@ -229,6 +235,150 @@ func (s *ServiceContext) GetCommentBySnowCid(ctx context.Context, snowCid int64)
 	return comment, nil
 }
 
+// ==================== Reply 缓存 ====================
+
+// SetReplyToCache 将回复存入缓存
+func (s *ServiceContext) SetReplyToCache(ctx context.Context, snowCid int64, reply *model.Reply) error {
+	fields := map[string]interface{}{
+		"snow_cid":    reply.SnowCid,
+		"snow_tid":    reply.SnowTid,
+		"uid":         reply.Uid,
+		"parent_id":   reply.ParentId,
+		"root_id":     reply.RootId,
+		"content":     reply.Content,
+		"status":      reply.Status,
+		"created_at":  reply.CreatedAt,
+		"like_count":  reply.LikeCount,
+		"reply_count": reply.ReplyCount,
+	}
+
+	if err := s.CacheManager.HSetAll(ctx, "reply", "info", snowCid, fields); err != nil {
+		logx.Errorf("SetReplyToCache error, snow_cid:%d, err:%v", snowCid, err)
+		return err
+	}
+
+	return s.CacheManager.Expire(ctx, "reply", "info", snowCid, 3600)
+}
+
+// GetReplyFromCache 从Hash缓存获取回复
+func (s *ServiceContext) GetReplyFromCache(ctx context.Context, snowCid int64) (*model.Reply, error) {
+	fields, err := s.CacheManager.HGetAll(ctx, "reply", "info", snowCid)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(fields) == 0 {
+		return nil, redis.Nil
+	}
+
+	reply := &model.Reply{}
+	if v, ok := fields["snow_cid"]; ok {
+		reply.SnowCid, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["snow_tid"]; ok {
+		reply.SnowTid, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["uid"]; ok {
+		reply.Uid, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["parent_id"]; ok {
+		reply.ParentId, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["root_id"]; ok {
+		reply.RootId, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["content"]; ok {
+		reply.Content = v
+	}
+	if v, ok := fields["status"]; ok {
+		reply.Status, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["created_at"]; ok {
+		reply.CreatedAt, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["like_count"]; ok {
+		reply.LikeCount, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if v, ok := fields["reply_count"]; ok {
+		reply.ReplyCount, _ = strconv.ParseInt(v, 10, 64)
+	}
+
+	return reply, nil
+}
+
+// GetReplyBySnowCid 根据雪花ID获取回复（先缓存后DB）
+func (s *ServiceContext) GetReplyBySnowCid(ctx context.Context, snowCid int64) (*model.Reply, error) {
+	// 1. 先从缓存获取
+	reply, err := s.GetReplyFromCache(ctx, snowCid)
+	if err == nil {
+		return reply, nil
+	}
+
+	// 2. 缓存未命中，从数据库查询
+	reply, err = s.ReplyModel.FindOne(ctx, snowCid)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. 回写缓存
+	go func() {
+		_ = s.SetReplyToCache(context.Background(), snowCid, reply)
+	}()
+
+	return reply, nil
+}
+
+// ==================== 统一查询 ====================
+
+// GetCommentOrReplyBySnowCid 先查 comment，再查 reply
+func (s *ServiceContext) GetCommentOrReplyBySnowCid(ctx context.Context, snowCid int64) (*CommentOrReply, error) {
+	// 1. 先查 comment 缓存/DB
+	comment, err := s.GetCommentBySnowCid(ctx, snowCid)
+	if err == nil && comment != nil {
+		return &CommentOrReply{
+			SnowCid:    comment.SnowCid,
+			SnowTid:    comment.SnowTid,
+			Uid:        comment.Uid,
+			Content:    comment.Content,
+			LikeCount:  comment.LikeCount,
+			ReplyCount: comment.ReplyCount,
+			Status:     comment.Status,
+			CreatedAt:  comment.CreatedAt,
+			UpdatedAt:  comment.UpdatedAt,
+			IsReply:    false,
+		}, nil
+	}
+
+	// 2. 查 reply 缓存/DB
+	reply, err := s.GetReplyBySnowCid(ctx, snowCid)
+	if err == nil && reply != nil {
+		return &CommentOrReply{
+			SnowCid:    reply.SnowCid,
+			SnowTid:    reply.SnowTid,
+			Uid:        reply.Uid,
+			ParentId:   reply.ParentId,
+			RootId:     reply.RootId,
+			Content:    reply.Content,
+			LikeCount:  reply.LikeCount,
+			ReplyCount: reply.ReplyCount,
+			Status:     reply.Status,
+			CreatedAt:  reply.CreatedAt,
+			UpdatedAt:  reply.UpdatedAt,
+			IsReply:    true,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("comment or reply not found, snowCid:%d", snowCid)
+}
+
+// ==================== 推文/评论列表 ====================
+
+// IncrTweetCommentCount 增加推文评论数
+func (s *ServiceContext) IncrTweetCommentCount(ctx context.Context, snowTid int64, delta int) error {
+	_, err := s.CacheManager.HIncrBy(ctx, "tweet", "info", snowTid, "comment_count", delta)
+	return err
+}
+
 // GetTopCommentsBySnowTid 获取推文的顶级评论snow_cid列表（先缓存后DB）
 func (s *ServiceContext) GetTopCommentsBySnowTid(ctx context.Context, snowTid int64) ([]int64, error) {
 	// 1. 先从缓存获取snow_cid列表
@@ -237,7 +387,7 @@ func (s *ServiceContext) GetTopCommentsBySnowTid(ctx context.Context, snowTid in
 		return snowCids, nil
 	}
 
-	// 2. 缓存未命中，从数据库查询顶级评论（parent_id=0）
+	// 2. 缓存未命中，从数据库查询（comment 表只有根评论）
 	dbSnowCids, err := s.CommentModel.FindTopSnowCidsByTid(ctx, snowTid)
 	if err != nil {
 		return nil, err
@@ -262,10 +412,15 @@ func (s *ServiceContext) GetRepliesByRootId(ctx context.Context, rootSnowCid int
 		return replySnowCids, nil
 	}
 
-	// 2. 缓存未命中，从数据库查询回复（root_id = rootSnowCid AND parent_id != 0）
-	dbReplySnowCids, err := s.CommentModel.FindReplySnowCidsByParentId(ctx, rootSnowCid)
+	// 2. 缓存未命中，从 reply 表查询
+	replies, err := s.ReplyModel.FindByRootId(ctx, rootSnowCid, 0, 1000)
 	if err != nil {
 		return nil, err
+	}
+
+	dbReplySnowCids := make([]int64, 0, len(replies))
+	for _, r := range replies {
+		dbReplySnowCids = append(dbReplySnowCids, r.SnowCid)
 	}
 
 	// 3. 回写缓存（异步）

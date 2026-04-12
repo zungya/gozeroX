@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Interaction_CreateComment_FullMethodName   = "/pb.Interaction/CreateComment"
+	Interaction_CreateReply_FullMethodName     = "/pb.Interaction/CreateReply"
 	Interaction_DeleteComment_FullMethodName   = "/pb.Interaction/DeleteComment"
 	Interaction_GetComments_FullMethodName     = "/pb.Interaction/GetComments"
 	Interaction_GetReplies_FullMethodName      = "/pb.Interaction/GetReplies"
@@ -34,6 +35,7 @@ const (
 type InteractionClient interface {
 	// 评论服务
 	CreateComment(ctx context.Context, in *CreateCommentReq, opts ...grpc.CallOption) (*CreateCommentResp, error)
+	CreateReply(ctx context.Context, in *CreateReplyReq, opts ...grpc.CallOption) (*CreateReplyResp, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentReq, opts ...grpc.CallOption) (*DeleteCommentResp, error)
 	GetComments(ctx context.Context, in *GetCommentsReq, opts ...grpc.CallOption) (*GetCommentsResp, error)
 	GetReplies(ctx context.Context, in *GetRepliesReq, opts ...grpc.CallOption) (*GetRepliesResp, error)
@@ -56,6 +58,16 @@ func (c *interactionClient) CreateComment(ctx context.Context, in *CreateComment
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCommentResp)
 	err := c.cc.Invoke(ctx, Interaction_CreateComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) CreateReply(ctx context.Context, in *CreateReplyReq, opts ...grpc.CallOption) (*CreateReplyResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateReplyResp)
+	err := c.cc.Invoke(ctx, Interaction_CreateReply_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +140,7 @@ func (c *interactionClient) GetUserAllLikes(ctx context.Context, in *GetUserAllL
 type InteractionServer interface {
 	// 评论服务
 	CreateComment(context.Context, *CreateCommentReq) (*CreateCommentResp, error)
+	CreateReply(context.Context, *CreateReplyReq) (*CreateReplyResp, error)
 	DeleteComment(context.Context, *DeleteCommentReq) (*DeleteCommentResp, error)
 	GetComments(context.Context, *GetCommentsReq) (*GetCommentsResp, error)
 	GetReplies(context.Context, *GetRepliesReq) (*GetRepliesResp, error)
@@ -148,6 +161,9 @@ type UnimplementedInteractionServer struct{}
 
 func (UnimplementedInteractionServer) CreateComment(context.Context, *CreateCommentReq) (*CreateCommentResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateComment not implemented")
+}
+func (UnimplementedInteractionServer) CreateReply(context.Context, *CreateReplyReq) (*CreateReplyResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateReply not implemented")
 }
 func (UnimplementedInteractionServer) DeleteComment(context.Context, *DeleteCommentReq) (*DeleteCommentResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteComment not implemented")
@@ -202,6 +218,24 @@ func _Interaction_CreateComment_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(InteractionServer).CreateComment(ctx, req.(*CreateCommentReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_CreateReply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateReplyReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).CreateReply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_CreateReply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).CreateReply(ctx, req.(*CreateReplyReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -324,6 +358,10 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateComment",
 			Handler:    _Interaction_CreateComment_Handler,
+		},
+		{
+			MethodName: "CreateReply",
+			Handler:    _Interaction_CreateReply_Handler,
 		},
 		{
 			MethodName: "DeleteComment",
