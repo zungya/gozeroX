@@ -64,7 +64,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := l.sendLikeCommentMessage(likeRecord, in.IsCreated == 0); err != nil {
+	if err := l.sendLikeCommentMessage(likeRecord, in.IsCreated == 0, in.IsReply); err != nil {
 		logx.Errorf("LikeComment send queue message errorx, err:%v", err)
 	}
 
@@ -82,7 +82,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 				logx.Errorf("sendLikeCommentNotification panic: %v", r)
 			}
 		}()
-		l.sendLikeCommentNotification(in.Uid, in.SnowCid, in.SnowTid, in.Status)
+		l.sendLikeCommentNotification(in.Uid, in.SnowCid, in.SnowTid, in.Status, in.IsReply)
 	}()
 
 	// 异步发送互动事件到 Kafka（推荐系统用）
@@ -115,7 +115,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 }
 
 // sendLikeCommentMessage 发送点赞消息到 Kafka
-func (l *LikeCommentLogic) sendLikeCommentMessage(like *model.LikesComment, isNew bool) error {
+func (l *LikeCommentLogic) sendLikeCommentMessage(like *model.LikesComment, isNew bool, isReply int64) error {
 	action := "update_like_comment"
 	if isNew {
 		action = "create_like_comment"
@@ -130,6 +130,7 @@ func (l *LikeCommentLogic) sendLikeCommentMessage(like *model.LikesComment, isNe
 		"status":        like.Status,
 		"created_at":    like.CreatedAt,
 		"updated_at":    like.UpdatedAt,
+		"is_reply":      isReply,
 	}
 
 	body, err := json.Marshal(message)
@@ -143,26 +144,41 @@ func (l *LikeCommentLogic) sendLikeCommentMessage(like *model.LikesComment, isNe
 
 // updateCommentLikeCount 更新评论点赞数缓存
 func (l *LikeCommentLogic) updateCommentLikeCount(snowCid int64, delta int) {
-	err := l.svcCtx.IncrCommentLikeCount(l.ctx, snowCid, delta)
+	err := l.svcCtx.IncrCommentLikeCount(context.Background(), snowCid, delta)
 	if err != nil {
 		logx.Errorf("updateCommentLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
 	}
 }
 
 // sendLikeCommentNotification 异步发送评论点赞通知到 Kafka notice topic
-func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTid int64, status int64) {
-	// 1. 获取评论/回复作者UID（通知接收者）和 root_id
-	cr, err := l.svcCtx.GetCommentOrReplyBySnowCid(context.Background(), snowCid)
-	if err != nil {
-		logx.Errorf("sendLikeCommentNotification GetCommentOrReplyBySnowCid error: %v", err)
-		return
+func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTid int64, status int64, isReply int64) {
+	var recipientUid int64
+	var rootId int64
+
+	if isReply == 0 {
+		// 根评论：查 comment 表
+		comment, err := l.svcCtx.GetCommentBySnowCid(context.Background(), snowCid)
+		if err != nil {
+			logx.Errorf("sendLikeCommentNotification GetCommentBySnowCid error: %v", err)
+			return
+		}
+		recipientUid = comment.Uid
+	} else {
+		// 子评论：查 reply 表
+		reply, err := l.svcCtx.GetReplyBySnowCid(context.Background(), snowCid)
+		if err != nil {
+			logx.Errorf("sendLikeCommentNotification GetReplyBySnowCid error: %v", err)
+			return
+		}
+		recipientUid = reply.Uid
+		rootId = reply.RootId
 	}
-	// 自己赞自己的评论不发通知
-	if cr.Uid == likerUid {
+
+	// 自己赞自己不发通知
+	if recipientUid == likerUid {
 		return
 	}
 
-	// 2. 构建通知消息
 	action := "like_comment"
 	if status == 0 {
 		action = "cancel_like_comment"
@@ -173,9 +189,9 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 		"target_type":   1,
 		"target_id":     snowCid,
 		"snow_tid":      snowTid,
-		"root_id":       cr.RootId,
+		"root_id":       rootId,
 		"liker_uid":     likerUid,
-		"recipient_uid": cr.Uid,
+		"recipient_uid": recipientUid,
 		"timestamp":     now,
 	}
 	body, err := json.Marshal(message)
@@ -184,9 +200,8 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 		return
 	}
 
-	// 3. 发送到 notice topic
 	pusher := l.svcCtx.GetPusher("notice")
-	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_comment_%d_%d", cr.Uid, snowCid), string(body)); err != nil {
+	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_comment_%d_%d", recipientUid, snowCid), string(body)); err != nil {
 		logx.Errorf("sendLikeCommentNotification push error: %v", err)
 	}
 }

@@ -61,11 +61,11 @@ func (l *CreateReplyLogic) CreateReply(in *pb.CreateReplyReq) (*pb.CreateReplyRe
 	// 4. 更新缓存计数
 	go func() {
 		// 推文评论数 +1
-		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
+		if err := l.svcCtx.IncrTweetCommentCount(context.Background(), in.SnowTid, 1); err != nil {
 			logx.Errorf("CreateReply incr tweet comment count error, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 		// 父评论回复数 +1
-		if err := l.svcCtx.IncrCommentReplyCount(l.ctx, in.ParentId, 1); err != nil {
+		if err := l.svcCtx.IncrCommentReplyCount(context.Background(), in.ParentId, 1); err != nil {
 			logx.Errorf("CreateReply incr comment reply count error, parentId:%d, err:%v", in.ParentId, err)
 		}
 		// 添加到回复 Set

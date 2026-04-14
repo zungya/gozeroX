@@ -140,7 +140,7 @@ func (l *LikeTweetLogic) sendLikeTweetMessage(like *model.LikesTweet, isNew bool
 
 // updateTweetLikeCount 更新推文点赞数缓存
 func (l *LikeTweetLogic) updateTweetLikeCount(snowTid int64, delta int) {
-	_, err := l.svcCtx.CacheManager.HIncrBy(l.ctx, "tweet", "info", snowTid, "like_count", delta)
+	_, err := l.svcCtx.CacheManager.HIncrBy(context.Background(), "tweet", "info", snowTid, "like_count", delta)
 	if err != nil {
 		logx.Errorf("updateTweetLikeCount errorx, snowTid:%d, delta:%d, err:%v", snowTid, delta, err)
 	}

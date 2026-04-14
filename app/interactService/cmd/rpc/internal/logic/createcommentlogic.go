@@ -66,7 +66,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 
 	// 4. 更新缓存计数和列表
 	go func() {
-		if err := l.svcCtx.IncrTweetCommentCount(l.ctx, in.SnowTid, 1); err != nil {
+		if err := l.svcCtx.IncrTweetCommentCount(context.Background(), in.SnowTid, 1); err != nil {
 			logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 		_ = l.svcCtx.CacheManager.SAdd(

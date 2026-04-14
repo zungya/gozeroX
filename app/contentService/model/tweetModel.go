@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -136,7 +137,7 @@ func (m *customTweetModel) FindByUid(ctx context.Context, uid int64, isPublic *b
 
 // UpdateStatus 更新推文状态
 func (m *customTweetModel) UpdateStatus(ctx context.Context, snowTid int64, status int64) error {
-	query := fmt.Sprintf("UPDATE %s SET status = $1 WHERE snow_tid = $2", m.table, status, snowTid)
+	query := fmt.Sprintf("UPDATE %s SET status = $1 WHERE snow_tid = $2", m.table)
 	_, err := m.ExecNoCacheCtx(ctx, query, status, snowTid)
 	return err
 }
@@ -160,6 +161,9 @@ func (m *customTweetModel) UpdateCount(ctx context.Context, snowTid int64, updat
 		WHERE snow_tid = $2
 	`, m.table, field, field)
 
-	_, err := m.ExecNoCacheCtx(ctx, query, delta, snowTid)
+	cacheKey := fmt.Sprintf("%s%v", cachePublicTweetSnowTidPrefix, snowTid)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
+		return conn.ExecCtx(ctx, query, delta, snowTid)
+	}, cacheKey)
 	return err
 }
