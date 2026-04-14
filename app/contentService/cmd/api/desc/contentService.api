@@ -38,7 +38,7 @@ type (
 	}
 	// 删除推文请求（uid 从 JWT 获取）
 	DeleteTweetReq {
-		SnowTid int64 `path:"snowTid,string"` // 推文ID（雪花ID）
+		SnowTid int64 `form:"snowTid,string"` // 推文ID（雪花ID）
 	}
 	DeleteTweetResp {
 		Code int64  `json:"code"`
@@ -56,6 +56,15 @@ type (
 		Msg   string  `json:"msg"`
 		Data  []Tweet `json:"data"`
 		Total int64   `json:"total"`
+	}
+	// 获取单条推文（推文详情页场景）
+	GetTweetReq {
+		SnowTid int64 `form:"snowTid,string"` // 推文ID（雪花ID）
+	}
+	GetTweetResp {
+		Code int64  `json:"code"`
+		Msg  string `json:"msg"`
+		Data Tweet  `json:"data"`
 	}
 )
 
@@ -75,5 +84,9 @@ service content-api {
 	// 删除推文
 	@handler deleteTweet
 	delete /deleteTweet (DeleteTweetReq) returns (DeleteTweetResp)
+
+	// 获取单条推文
+	@handler getTweet
+	get /getTweet (GetTweetReq) returns (GetTweetResp)
 }
 

@@ -17,7 +17,7 @@ type CreateTweetResp struct {
 }
 
 type DeleteTweetReq struct {
-	SnowTid int64 `path:"snowTid,string"` // 推文ID（雪花ID）
+	SnowTid int64 `form:"snowTid,string"` // 推文ID（雪花ID）
 }
 
 type DeleteTweetResp struct {
@@ -52,4 +52,14 @@ type Tweet struct {
 	Status       int64    `json:"status"`         // 推文状态：0正常，1删除，2审核
 	Nickname     string   `json:"nickname"`       // 发布用户昵称
 	Avatar       string   `json:"avatar"`         // 发布用户头像
+}
+
+type GetTweetReq struct {
+	SnowTid int64 `form:"snowTid,string"` // 推文ID（雪花ID）
+}
+
+type GetTweetResp struct {
+	Code int64  `json:"code"`
+	Msg  string `json:"msg"`
+	Data Tweet  `json:"data"`
 }

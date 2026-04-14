@@ -32,6 +32,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/listTweets",
 				Handler: jwtMiddleware.Handle(content.ListTweetsHandler(serverCtx)),
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/getTweet",
+				Handler: jwtMiddleware.Handle(content.GetTweetHandler(serverCtx)),
+			},
 		},
 		rest.WithPrefix("/contentService/v1"),
 	)
