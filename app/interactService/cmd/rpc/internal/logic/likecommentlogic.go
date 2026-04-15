@@ -68,12 +68,12 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 		logx.Errorf("LikeComment send queue message errorx, err:%v", err)
 	}
 
-	// 更新评论点赞数缓存
+	// 更新评论/回复点赞数缓存
 	delta := 1
 	if in.Status == 0 {
 		delta = -1
 	}
-	go l.updateCommentLikeCount(in.SnowCid, delta)
+	go l.updateCommentLikeCount(in.SnowCid, delta, in.IsReply)
 
 	// 异步发送评论点赞通知（不影响主流程）
 	go func() {
@@ -142,11 +142,18 @@ func (l *LikeCommentLogic) sendLikeCommentMessage(like *model.LikesComment, isNe
 	return pusher.PushWithKey(l.ctx, fmt.Sprintf("%d", like.SnowLikesId), string(body))
 }
 
-// updateCommentLikeCount 更新评论点赞数缓存
-func (l *LikeCommentLogic) updateCommentLikeCount(snowCid int64, delta int) {
-	err := l.svcCtx.IncrCommentLikeCount(context.Background(), snowCid, delta)
-	if err != nil {
-		logx.Errorf("updateCommentLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+// updateCommentLikeCount 更新评论/回复点赞数缓存
+func (l *LikeCommentLogic) updateCommentLikeCount(snowCid int64, delta int, isReply int64) {
+	if isReply == 0 {
+		err := l.svcCtx.IncrCommentLikeCount(context.Background(), snowCid, delta)
+		if err != nil {
+			logx.Errorf("updateCommentLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+		}
+	} else {
+		err := l.svcCtx.IncrReplyLikeCount(context.Background(), snowCid, delta)
+		if err != nil {
+			logx.Errorf("updateReplyLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+		}
 	}
 }
 

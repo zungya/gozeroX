@@ -200,6 +200,12 @@ func (s *ServiceContext) IncrCommentLikeCount(ctx context.Context, snowCid int64
 	return err
 }
 
+// IncrReplyLikeCount 原子增加回复点赞数
+func (s *ServiceContext) IncrReplyLikeCount(ctx context.Context, snowCid int64, delta int) error {
+	_, err := s.CacheManager.HIncrBy(ctx, "reply", "info", snowCid, "like_count", delta)
+	return err
+}
+
 // IncrCommentReplyCount 原子增加评论回复数
 func (s *ServiceContext) IncrCommentReplyCount(ctx context.Context, snowCid int64, delta int) error {
 	_, err := s.CacheManager.HIncrBy(ctx, "comment", "info", snowCid, "reply_count", delta)
