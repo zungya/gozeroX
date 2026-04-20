@@ -37,7 +37,7 @@ func (c *CommentConsumer) Consume(ctx context.Context, key, value string) error 
 	case "create_reply":
 		return c.handleCreateReply(ctx, msg)
 	default:
-		logx.Errorf("CommentConsumer unknown action: %s", action)
+		logx.Infof("CommentConsumer unknown action: %s", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }
@@ -96,6 +96,10 @@ func (c *CommentConsumer) handleCreateReply(ctx context.Context, msg map[string]
 	c.updateTweetCommentCount(ctx, reply.SnowTid, 1)
 	// 更新父评论的回复数（DB）
 	c.updateParentReplyCount(ctx, reply.ParentId, 1)
+	// 如果是子评论的回复（RootId != 0 且 RootId != ParentId），根评论回复数也 +1
+	if reply.RootId != 0 && reply.RootId != reply.ParentId {
+		c.updateParentReplyCount(ctx, reply.RootId, 1)
+	}
 
 	return nil
 }

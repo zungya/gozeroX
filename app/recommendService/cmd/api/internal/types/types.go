@@ -4,16 +4,13 @@
 package types
 
 type RecommendFeedReq struct {
-	Limit  int64 `form:"limit,default=8"`
-	Cursor int64 `form:"cursor,optional"`
+	Limit int64 `form:"limit,default=8"` // 请求数量
 }
 
 type RecommendFeedResp struct {
-	Code    int64       `json:"code"`
-	Msg     string      `json:"msg"`
-	Data    []TweetInfo `json:"data"`
-	Cursor  int64       `json:"cursor"`
-	HasMore bool        `json:"hasMore"`
+	Code int64       `json:"code"`
+	Msg  string      `json:"msg"`
+	Data []TweetInfo `json:"data"`
 }
 
 type TweetInfo struct {

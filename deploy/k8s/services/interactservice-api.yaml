@@ -5,7 +5,7 @@ metadata:
   namespace: gozerox
 data:
   service.yaml: |
-    Name: interact-api
+    Name: interactService-api
     Host: 0.0.0.0
     Port: 1003
     Mode: dev
@@ -14,6 +14,14 @@ data:
       Host: 0.0.0.0
       Port: 4005
       Path: /metrics
+
+    Log:
+      ServiceName: interactService-api
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
 
     InteractServiceRpcConf:
       Endpoints:

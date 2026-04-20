@@ -33,13 +33,13 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 	tweet, err := l.svcCtx.TweetModel.FindOne(l.ctx, in.SnowTid)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
-			logx.Infof("DeleteTweet tweet %d not found, uid:%d", in.SnowTid, in.Uid)
+			l.Infof("DeleteTweet tweet %d not found, uid:%d", in.SnowTid, in.Uid)
 			return &pb.DeleteTweetResp{
 				Code: 0,
 				Msg:  "推文不存在",
 			}, nil
 		}
-		logx.Errorf("DeleteTweet find tweet %d error: %v", in.SnowTid, err)
+		l.Errorf("DeleteTweet find tweet %d error: %v", in.SnowTid, err)
 		return &pb.DeleteTweetResp{
 			Code: 500,
 			Msg:  "查询推文失败",
@@ -48,7 +48,7 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 
 	// 2. 权限校验：只能删除自己的推文
 	if tweet.Uid != in.Uid {
-		logx.Errorf("DeleteTweet permission denied, uid:%d, tweet.uid:%d, snowTid:%d",
+		l.Infof("DeleteTweet permission denied, uid:%d, tweet.uid:%d, snowTid:%d",
 			in.Uid, tweet.Uid, in.SnowTid)
 		return &pb.DeleteTweetResp{
 			Code: 403,
@@ -58,7 +58,7 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 
 	// 3. 检查是否已删除（软删除幂等性）
 	if tweet.Status == 1 {
-		logx.Infof("DeleteTweet tweet %d already deleted, uid:%d", in.SnowTid, in.Uid)
+		l.Infof("DeleteTweet tweet %d already deleted, uid:%d", in.SnowTid, in.Uid)
 		return &pb.DeleteTweetResp{
 			Code: 0,
 			Msg:  "推文已删除",
@@ -67,7 +67,7 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 
 	// 4. 检查是否审核中（审核中的推文不能删除）
 	if tweet.Status == 2 {
-		logx.Infof("DeleteTweet tweet %d is pending review, uid:%d", in.SnowTid, in.Uid)
+		l.Infof("DeleteTweet tweet %d is pending review, uid:%d", in.SnowTid, in.Uid)
 		return &pb.DeleteTweetResp{
 			Code: 403,
 			Msg:  "审核中的推文不能删除",
@@ -76,7 +76,7 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 
 	// 5. 执行软删除（更新 status 为 1）
 	if err := l.svcCtx.TweetModel.UpdateStatus(l.ctx, in.SnowTid, 1); err != nil {
-		logx.Errorf("DeleteTweet update status error, snowTid:%d, err:%v", in.SnowTid, err)
+		l.Errorf("DeleteTweet update status error, snowTid:%d, err:%v", in.SnowTid, err)
 		return &pb.DeleteTweetResp{
 			Code: 500,
 			Msg:  "删除推文失败",
@@ -91,18 +91,18 @@ func (l *DeleteTweetLogic) DeleteTweet(in *pb.DeleteTweetReq) (*pb.DeleteTweetRe
 	// 7. 异步更新用户发帖数（减1)
 	go func() {
 		if err := l.svcCtx.IncrUserPostCount(context.Background(), in.Uid, -1); err != nil {
-			logx.Errorf("DeleteTweet IncrUserPostCount error, uid:%d, err:%v", in.Uid, err)
+			l.Errorf("DeleteTweet IncrUserPostCount error, uid:%d, err:%v", in.Uid, err)
 		}
 	}()
 
 	// 7.5 异步发送推文删除事件到 Kafka（推荐系统用）
 	go func() {
 		if err := l.sendRecommendDeleteMessage(in.SnowTid); err != nil {
-			logx.Errorf("DeleteTweet sendRecommendDeleteMessage error, snowTid:%d, err:%v", in.SnowTid, err)
+			l.Errorf("DeleteTweet sendRecommendDeleteMessage error, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 	}()
 
-	logx.Infof("DeleteTweet success, snowTid:%d, uid:%d", in.SnowTid, in.Uid)
+	l.Infof("DeleteTweet success, snowTid:%d, uid:%d", in.SnowTid, in.Uid)
 
 	return &pb.DeleteTweetResp{
 		Code: 0,

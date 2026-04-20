@@ -34,6 +34,7 @@ func (l *CreateReplyLogic) CreateReply(in *pb.CreateReplyReq) (*pb.CreateReplyRe
 	// 1. 生成雪花ID
 	snowCid, err := idgen.GenID()
 	if err != nil {
+		l.Errorf("CreateReply GenID error: %v", err)
 		return &pb.CreateReplyResp{Code: 120101, Msg: "生成回复ID失败"}, nil
 	}
 
@@ -55,6 +56,7 @@ func (l *CreateReplyLogic) CreateReply(in *pb.CreateReplyReq) (*pb.CreateReplyRe
 
 	// 3. 写缓存
 	if err := l.svcCtx.SetReplyToCache(l.ctx, snowCid, reply); err != nil {
+		l.Errorf("CreateReply SetReplyToCache error, snowCid:%d, err:%v", snowCid, err)
 		return &pb.CreateReplyResp{Code: 120103, Msg: "缓存回复失败"}, nil
 	}
 
@@ -62,11 +64,17 @@ func (l *CreateReplyLogic) CreateReply(in *pb.CreateReplyReq) (*pb.CreateReplyRe
 	go func() {
 		// 推文评论数 +1
 		if err := l.svcCtx.IncrTweetCommentCount(context.Background(), in.SnowTid, 1); err != nil {
-			logx.Errorf("CreateReply incr tweet comment count error, snowTid:%d, err:%v", in.SnowTid, err)
+			l.Errorf("CreateReply incr tweet comment count error, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 		// 父评论回复数 +1
 		if err := l.svcCtx.IncrCommentReplyCount(context.Background(), in.ParentId, 1); err != nil {
-			logx.Errorf("CreateReply incr comment reply count error, parentId:%d, err:%v", in.ParentId, err)
+			l.Errorf("CreateReply incr comment reply count error, parentId:%d, err:%v", in.ParentId, err)
+		}
+		// 如果是子评论的回复（RootId != 0 且 RootId != ParentId），根评论回复数也 +1
+		if in.RootId != 0 && in.RootId != in.ParentId {
+			if err := l.svcCtx.IncrCommentReplyCount(context.Background(), in.RootId, 1); err != nil {
+				l.Errorf("CreateReply incr root comment reply count error, rootId:%d, err:%v", in.RootId, err)
+			}
 		}
 		// 添加到回复 Set
 		if reply.RootId != 0 {
@@ -77,7 +85,7 @@ func (l *CreateReplyLogic) CreateReply(in *pb.CreateReplyReq) (*pb.CreateReplyRe
 
 	// 5. 发送 Kafka 消息异步落库
 	if err := l.sendCreateReplyMessage(reply); err != nil {
-		logx.Errorf("CreateReply send queue message error, snowCid:%d, err:%v", snowCid, err)
+		l.Errorf("CreateReply send queue message error, snowCid:%d, err:%v", snowCid, err)
 		go l.recordFailedMessage(reply)
 	}
 
@@ -156,9 +164,9 @@ func (l *CreateReplyLogic) recordFailedMessage(reply *model.Reply) {
 		"last_retry":  time.Now().Unix(),
 	}
 	failedBody, _ := json.Marshal(failedMsg)
-	_, err := l.svcCtx.RedisClient.LpushCtx(l.ctx, "failed:reply:create", string(failedBody))
+	_, err := l.svcCtx.RedisClient.LpushCtx(context.Background(), "failed:reply:create", string(failedBody))
 	if err != nil {
-		logx.Errorf("recordFailedMessage lpush error: %v", err)
+		l.Errorf("recordFailedMessage lpush error: %v", err)
 	}
 }
 
@@ -166,7 +174,7 @@ func (l *CreateReplyLogic) sendReplyNotification(reply *model.Reply) {
 	// 获取父评论作者UID和内容
 	parentComment, err := l.svcCtx.GetCommentOrReplyBySnowCid(context.Background(), reply.ParentId)
 	if err != nil {
-		logx.Errorf("sendReplyNotification GetCommentOrReply error, parentId:%d, err:%v", reply.ParentId, err)
+		l.Errorf("sendReplyNotification GetCommentOrReply error, parentId:%d, err:%v", reply.ParentId, err)
 		return
 	}
 	// 自己回复自己不发通知
@@ -190,7 +198,7 @@ func (l *CreateReplyLogic) sendReplyNotification(reply *model.Reply) {
 	body, _ := json.Marshal(message)
 	pusher := l.svcCtx.GetPusher("notice")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("reply_%d_%d", parentComment.Uid, reply.SnowCid), string(body)); err != nil {
-		logx.Errorf("sendReplyNotification push error: %v", err)
+		l.Errorf("sendReplyNotification push error: %v", err)
 	}
 }
 
@@ -205,10 +213,11 @@ func (l *CreateReplyLogic) sendRecommendInteraction(action string, uid, snowTid,
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
+		l.Errorf("sendRecommendInteraction marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("recommend_interaction")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowCid), string(body)); err != nil {
-		logx.Errorf("sendRecommendInteraction push error: %v", err)
+		l.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

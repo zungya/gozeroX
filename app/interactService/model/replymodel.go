@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/zeromicro/go-zero/core/stores/cache"
@@ -86,6 +87,9 @@ func (m *customReplyModel) UpdateCount(ctx context.Context, snowCid int64, updat
 		WHERE snow_cid = $2
 	`, m.table, field, field)
 
-	_, err := m.ExecNoCacheCtx(ctx, query, delta, snowCid)
+	cacheKey := fmt.Sprintf("%s%v", cachePublicReplySnowCidPrefix, snowCid)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
+		return conn.ExecCtx(ctx, query, delta, snowCid)
+	}, cacheKey)
 	return err
 }

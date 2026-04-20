@@ -76,7 +76,7 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 
 	wg.Wait()
 
-	logx.Infof("批量查询推文: 总请求=%d, 唯一TID=%d, 缓存命中=%d, 未命中=%d",
+	l.Infof("批量查询推文: 总请求=%d, 唯一TID=%d, 缓存命中=%d, 未命中=%d",
 		len(in.SnowTids), len(uniqueTids), len(cachedTweets), len(missTids))
 
 	// 4. 如果没有缓存未命中的，直接返回
@@ -87,7 +87,7 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 	// 5. 批量查询数据库（未命中的）
 	dbTweets, err := l.svcCtx.TweetModel.FindBatchBySnowTids(l.ctx, missTids)
 	if err != nil {
-		logx.Errorf("Batch find tweets error: %v", err)
+		l.Errorf("Batch find tweets error: %v", err)
 		return nil, err
 	}
 
@@ -96,7 +96,7 @@ func (l *BatchGetTweetsLogic) BatchGetTweets(in *pb.BatchGetTweetsReq) (*pb.Batc
 		for _, tweet := range dbTweets {
 			if tweet.IsPublic && tweet.Status == 0 {
 				if err := l.svcCtx.SetTweetToCache(context.Background(), tweet.SnowTid, tweet); err != nil {
-					logx.Errorf("BatchGetTweets SetTweetToCache error, snowTid:%d, err:%v", tweet.SnowTid, err)
+					l.Errorf("BatchGetTweets SetTweetToCache error, snowTid:%d, err:%v", tweet.SnowTid, err)
 				}
 			}
 		}
@@ -138,7 +138,7 @@ func (l *BatchGetTweetsLogic) buildRespWithUserInfo(tweetMap map[int64]*model.Tw
 		Uids: uids,
 	})
 	if err != nil {
-		logx.Errorf("BatchGetUserBrief error: %v", err)
+		l.Errorf("BatchGetUserBrief error: %v", err)
 		// 用户信息获取失败，仍然返回推文（只是没有用户信息）
 		return &pb.BatchGetTweetsResp{
 			Code:   0,

@@ -110,6 +110,48 @@ func (m *Manager) SCard(ctx context.Context, module, dataType string, id interfa
 	return m.client.ScardCtx(ctx, key)
 }
 
+// LLen 返回 List 长度
+func (m *Manager) LLen(ctx context.Context, module, dataType string, id interface{}) (int, error) {
+	key := m.Key(module, dataType, id)
+	return m.client.LlenCtx(ctx, key)
+}
+
+// LRange 返回 List 指定范围的元素（int64）
+func (m *Manager) LRange(ctx context.Context, module, dataType string, id interface{}, start, stop int) ([]int64, error) {
+	key := m.Key(module, dataType, id)
+	vals, err := m.client.LrangeCtx(ctx, key, start, stop)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]int64, 0, len(vals))
+	for _, v := range vals {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			continue
+		}
+		result = append(result, n)
+	}
+	return result, nil
+}
+
+// LTrim 保留 List 指定范围，其余删除
+func (m *Manager) LTrim(ctx context.Context, module, dataType string, id interface{}, start, stop int64) error {
+	key := m.Key(module, dataType, id)
+	return m.client.LtrimCtx(ctx, key, start, stop)
+}
+
+// RPush 向 List 右侧追加 int64 元素
+func (m *Manager) RPush(ctx context.Context, module, dataType string, id interface{}, values ...int64) error {
+	key := m.Key(module, dataType, id)
+	for _, v := range values {
+		_, err := m.client.RpushCtx(ctx, key, strconv.FormatInt(v, 10))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Expire 给指定Key设置过期时间（可选，用于评论ID列表的过期策略）
 func (m *Manager) Expire(ctx context.Context, module, dataType string, id interface{}, expireSeconds int) error {
 	key := m.Key(module, dataType, id)

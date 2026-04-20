@@ -519,7 +519,8 @@ func (x *CreateReplyResp) GetReply() *ReplyInfo {
 type DeleteCommentReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SnowCid       int64                  `protobuf:"varint,1,opt,name=snow_cid,json=snowCid,proto3" json:"snow_cid,omitempty"`
-	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"` // 删除评论的用户ID，后端需要校验这个用户是否有权限删除这条评论（只能删除自己的评论或者管理员可以删除任何评论）
+	Uid           int64                  `protobuf:"varint,2,opt,name=uid,proto3" json:"uid,omitempty"`                        // 删除评论的用户ID
+	IsReply       int64                  `protobuf:"varint,3,opt,name=is_reply,json=isReply,proto3" json:"is_reply,omitempty"` // 0=根评论（comment表），1=子评论（reply表）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -564,6 +565,13 @@ func (x *DeleteCommentReq) GetSnowCid() int64 {
 func (x *DeleteCommentReq) GetUid() int64 {
 	if x != nil {
 		return x.Uid
+	}
+	return 0
+}
+
+func (x *DeleteCommentReq) GetIsReply() int64 {
+	if x != nil {
+		return x.IsReply
 	}
 	return 0
 }
@@ -1149,6 +1157,7 @@ type LikeCommentReq struct {
 	SnowTid       int64                  `protobuf:"varint,5,opt,name=snow_tid,json=snowTid,proto3" json:"snow_tid,omitempty"`
 	Status        int64                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
 	UpdateTime    int64                  `protobuf:"varint,7,opt,name=updateTime,proto3" json:"updateTime,omitempty"`
+	IsReply       int64                  `protobuf:"varint,8,opt,name=is_reply,json=isReply,proto3" json:"is_reply,omitempty"` // 0=根评论（comment表），1=子评论（reply表）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1228,6 +1237,13 @@ func (x *LikeCommentReq) GetStatus() int64 {
 func (x *LikeCommentReq) GetUpdateTime() int64 {
 	if x != nil {
 		return x.UpdateTime
+	}
+	return 0
+}
+
+func (x *LikeCommentReq) GetIsReply() int64 {
+	if x != nil {
+		return x.IsReply
 	}
 	return 0
 }
@@ -1657,10 +1673,11 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x0fCreateReplyResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x12#\n" +
-	"\x05reply\x18\x03 \x01(\v2\r.pb.ReplyInfoR\x05reply\"?\n" +
+	"\x05reply\x18\x03 \x01(\v2\r.pb.ReplyInfoR\x05reply\"Z\n" +
 	"\x10DeleteCommentReq\x12\x19\n" +
 	"\bsnow_cid\x18\x01 \x01(\x03R\asnowCid\x12\x10\n" +
-	"\x03uid\x18\x02 \x01(\x03R\x03uid\"S\n" +
+	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x19\n" +
+	"\bis_reply\x18\x03 \x01(\x03R\aisReply\"S\n" +
 	"\x11DeleteCommentResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x12\x18\n" +
@@ -1710,7 +1727,7 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x06status\x18\x05 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
 	"updateTime\x18\x06 \x01(\x03R\n" +
-	"updateTime\"\xd3\x01\n" +
+	"updateTime\"\xee\x01\n" +
 	"\x0eLikeCommentReq\x12\x1d\n" +
 	"\n" +
 	"is_created\x18\x01 \x01(\x03R\tisCreated\x12\"\n" +
@@ -1721,7 +1738,8 @@ const file_pb_interactService_proto_rawDesc = "" +
 	"\x06status\x18\x06 \x01(\x03R\x06status\x12\x1e\n" +
 	"\n" +
 	"updateTime\x18\a \x01(\x03R\n" +
-	"updateTime\"\\\n" +
+	"updateTime\x12\x19\n" +
+	"\bis_reply\x18\b \x01(\x03R\aisReply\"\\\n" +
 	"\rLikeTweetResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x12%\n" +

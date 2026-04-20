@@ -104,7 +104,7 @@ func (s *ServiceContext) GetPusher(topic string) *kq.Pusher {
 	pusher = kq.NewPusher(
 		s.Config.Kafka.Addrs,
 		topic,
-		kq.WithChunkSize(1024),
+		kq.WithChunkSize(1024*1024),
 		kq.WithFlushInterval(time.Second),
 	)
 

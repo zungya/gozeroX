@@ -34,6 +34,7 @@ func (l *DeleteCommentLogic) DeleteComment(req *types.DeleteCommentReq) (resp *t
 	rpcResp, err := l.svcCtx.InteractService.DeleteComment(l.ctx, &pb.DeleteCommentReq{
 		SnowCid: req.SnowCid,
 		Uid:     uid,
+		IsReply: req.IsReply,
 	})
 	if err != nil {
 		return nil, err

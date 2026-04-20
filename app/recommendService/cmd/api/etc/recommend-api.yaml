@@ -19,3 +19,10 @@ RecommendRpcConf:
   Endpoints:
     - 127.0.0.1:2005
   NonBlock: true
+
+Log:
+  ServiceName: recommendService-api
+  Mode: file
+  Level: info
+  Path: logs/recommendService-api
+  KeepDays: 7

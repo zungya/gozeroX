@@ -19,5 +19,6 @@ Prometheus:
 
 Log:
   ServiceName: notice-api
-  Mode: console
+  Mode: file
   Level: info
+  Path: logs/noticeService-api

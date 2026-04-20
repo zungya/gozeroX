@@ -26,7 +26,6 @@ type RecommendFeedReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Uid           int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
 	Limit         int64                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Cursor        int64                  `protobuf:"varint,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,20 +74,11 @@ func (x *RecommendFeedReq) GetLimit() int64 {
 	return 0
 }
 
-func (x *RecommendFeedReq) GetCursor() int64 {
-	if x != nil {
-		return x.Cursor
-	}
-	return 0
-}
-
 type RecommendFeedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          int64                  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
 	Msg           string                 `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
 	Tweets        []*TweetInfo           `protobuf:"bytes,3,rep,name=tweets,proto3" json:"tweets,omitempty"`
-	Cursor        int64                  `protobuf:"varint,4,opt,name=cursor,proto3" json:"cursor,omitempty"`
-	HasMore       bool                   `protobuf:"varint,5,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -142,20 +132,6 @@ func (x *RecommendFeedResp) GetTweets() []*TweetInfo {
 		return x.Tweets
 	}
 	return nil
-}
-
-func (x *RecommendFeedResp) GetCursor() int64 {
-	if x != nil {
-		return x.Cursor
-	}
-	return 0
-}
-
-func (x *RecommendFeedResp) GetHasMore() bool {
-	if x != nil {
-		return x.HasMore
-	}
-	return false
 }
 
 // ========== 推文展示信息（从 contentService 获取后填充） ==========
@@ -424,17 +400,14 @@ var File_pb_recommendService_proto protoreflect.FileDescriptor
 
 const file_pb_recommendService_proto_rawDesc = "" +
 	"\n" +
-	"\x19pb/recommendService.proto\x12\x02pb\"R\n" +
+	"\x19pb/recommendService.proto\x12\x02pb\":\n" +
 	"\x10RecommendFeedReq\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x03R\x05limit\x12\x16\n" +
-	"\x06cursor\x18\x03 \x01(\x03R\x06cursor\"\x93\x01\n" +
+	"\x05limit\x18\x02 \x01(\x03R\x05limit\"`\n" +
 	"\x11RecommendFeedResp\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x03R\x04code\x12\x10\n" +
 	"\x03msg\x18\x02 \x01(\tR\x03msg\x12%\n" +
-	"\x06tweets\x18\x03 \x03(\v2\r.pb.TweetInfoR\x06tweets\x12\x16\n" +
-	"\x06cursor\x18\x04 \x01(\x03R\x06cursor\x12\x19\n" +
-	"\bhas_more\x18\x05 \x01(\bR\ahasMore\"\x9c\x02\n" +
+	"\x06tweets\x18\x03 \x03(\v2\r.pb.TweetInfoR\x06tweets\"\x9c\x02\n" +
 	"\tTweetInfo\x12\x19\n" +
 	"\bsnow_tid\x18\x01 \x01(\x03R\asnowTid\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\x03R\x03uid\x12\x18\n" +

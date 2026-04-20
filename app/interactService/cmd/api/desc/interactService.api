@@ -15,12 +15,13 @@ type CommentInfo {
 	Uid        int64  `json:"uid"` // 用户ID
 	NickName   string `json:"nickname"` // 从用户服务获取
 	Avatar     string `json:"avatar"` // 从用户服务获取
-	ParentId   int64  `json:"parentId,string"` // 父评论ID，0表示顶级评论
-	RootId     int64  `json:"rootId,string"` // 根评论ID，0代表根评论
+	ParentId   int64  `json:"parentId,string"` // 根评论为0，子评论为回复目标ID
+	RootId     int64  `json:"rootId,string"` // 根评论为0，子评论为根评论ID
 	Content    string `json:"content"` // 评论内容
 	LikeCount  int64  `json:"likeCount"` // 点赞数
 	ReplyCount int64  `json:"replyCount"` // 回复数
 	CreateTime int64  `json:"createTime"` // 创建时间（毫秒级时间戳）
+	IsReply    int64  `json:"isReply"` // 0=根评论，1=子评论
 }
 
 // 创建评论
@@ -39,7 +40,8 @@ type CreateCommentResp {
 
 // 删除评论
 type DeleteCommentReq {
-	SnowCid int64 `path:"snowCid,string"` // 评论ID（雪花ID）
+	SnowCid int64 `form:"snowCid,string"` // 评论ID（雪花ID）
+	IsReply int64 `form:"isReply"` // 0=根评论，1=子评论
 }
 
 type DeleteCommentResp {
@@ -91,8 +93,9 @@ type LikeReq {
 	SnowLikesId int64 `json:"snowLikesId,string"` // 点赞记录ID，第一次操作时为0，更新时传之前的ID
 	TargetType  int64 `json:"targetType"` // 0-推文 1-评论
 	TargetId    int64 `json:"targetId,string"` // 目标ID（推文ID或评论ID，雪花ID）
-	SnowTid     int64 `json:"snowTid,string"` // 评论点赞时传入：评论所属推文ID（推文点赞时忽略）
+	SnowTid     int64 `json:"snowTid,string,optional"` // 评论点赞时传入：评论所属推文ID
 	Status      int64 `json:"status"` // 1-点赞 0-取消
+	IsReply     int64 `json:"isReply,optional"` // 评论点赞时：0=根评论，1=子评论
 }
 
 type LikeResp {
@@ -102,7 +105,7 @@ type LikeResp {
 }
 
 type GetUserlikesAllReq {
-	LikesCursor int64 `json:"likesCursor"`
+	LikesCursor int64 `form:"likesCursor"`
 }
 
 type UserTweetLike {

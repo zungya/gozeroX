@@ -8,9 +8,12 @@ import (
 	"gozeroX/app/interactService/cmd/rpc/internal/server"
 	"gozeroX/app/interactService/cmd/rpc/internal/svc"
 	"gozeroX/app/interactService/cmd/rpc/pb"
+	"gozeroX/pkg/elog"
 	"gozeroX/pkg/idgen"
 
+	_ "github.com/lib/pq"
 	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -38,9 +41,10 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
+	elog.Setup("interactService-rpc")
 	defer ctx.Close()
 	defer s.Stop()
 
-	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
+	logx.Infof("Starting rpc server at %s...", c.ListenOn)
 	s.Start()
 }

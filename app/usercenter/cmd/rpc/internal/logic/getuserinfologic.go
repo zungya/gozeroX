@@ -78,6 +78,7 @@ func (l *GetUserInfoLogic) GetUserInfo(in *pb.GetUserInfoReq) (*pb.GetUserInfoRe
 				Msg:  "用户不存在",
 			}, nil
 		}
+		l.Errorf("查询用户失败 uid: %d, err: %v", in.Uid, err)
 		return &pb.GetUserInfoResp{
 			Code: 1,
 			Msg:  "数据库查询失败",
@@ -104,8 +105,12 @@ func (l *GetUserInfoLogic) GetUserInfo(in *pb.GetUserInfoReq) (*pb.GetUserInfoRe
 
 	// 3. 异步写入缓存（避免阻塞）
 	go func() {
-		_ = l.svcCtx.CacheManager.HSetAll(context.Background(), "user", "info", user.Uid, userHash)
-		_ = l.svcCtx.CacheManager.Expire(context.Background(), "user", "info", user.Uid, 3600)
+		if err := l.svcCtx.CacheManager.HSetAll(context.Background(), "user", "info", user.Uid, userHash); err != nil {
+			l.Errorf("异步写入用户缓存失败 uid: %d, err: %v", user.Uid, err)
+		}
+		if err := l.svcCtx.CacheManager.Expire(context.Background(), "user", "info", user.Uid, 3600); err != nil {
+			l.Errorf("异步设置缓存过期时间失败 uid: %d, err: %v", user.Uid, err)
+		}
 	}()
 
 	// 4. 返回成功结果

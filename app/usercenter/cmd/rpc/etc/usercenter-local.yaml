@@ -22,9 +22,9 @@ Cache:
 
 Log:
   ServiceName: usercenter-rpc
-  Mode: console
+  Mode: file
   Level: info
-  Path: logs
+  Path: logs/usercenter-rpc
   KeepDays: 7
   StackCooldownMillis: 100
 

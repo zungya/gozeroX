@@ -34,7 +34,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	// 1. 生成雪花ID作为业务主键
 	snowCid, err := idgen.GenID()
 	if err != nil {
-		logx.Errorf("CreateComment generate snowflake id errorx: %v", err)
+		l.Errorf("CreateComment generate snowflake id errorx: %v", err)
 		return &pb.CreateCommentResp{
 			Code: 120101,
 			Msg:  "生成评论ID失败",
@@ -57,7 +57,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 
 	// 3. 先写缓存
 	if err := l.svcCtx.SetCommentToCache(l.ctx, snowCid, comment); err != nil {
-		logx.Errorf("CreateComment SetCommentToCache errorx, snowCid:%d, err:%v", snowCid, err)
+		l.Errorf("CreateComment SetCommentToCache errorx, snowCid:%d, err:%v", snowCid, err)
 		return &pb.CreateCommentResp{
 			Code: 120103,
 			Msg:  "缓存评论失败",
@@ -67,7 +67,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	// 4. 更新缓存计数和列表
 	go func() {
 		if err := l.svcCtx.IncrTweetCommentCount(context.Background(), in.SnowTid, 1); err != nil {
-			logx.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
+			l.Errorf("CreateComment incr tweet comment count errorx, snowTid:%d, err:%v", in.SnowTid, err)
 		}
 		_ = l.svcCtx.CacheManager.SAdd(
 			context.Background(),
@@ -80,7 +80,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 
 	// 5. 发送Kafka消息，异步落库
 	if err := l.sendCreateCommentMessage(comment); err != nil {
-		logx.Errorf("CreateComment send queue message errorx, snowCid:%d, err:%v", snowCid, err)
+		l.Errorf("CreateComment send queue message errorx, snowCid:%d, err:%v", snowCid, err)
 		go l.recordFailedMessage(comment)
 	}
 
@@ -88,7 +88,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendTweetCommentNotification panic: %v", r)
+				l.Errorf("sendTweetCommentNotification panic: %v", r)
 			}
 		}()
 		l.sendTweetCommentNotification(comment)
@@ -98,7 +98,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendRecommendInteraction panic: %v", r)
+				l.Errorf("sendRecommendInteraction panic: %v", r)
 			}
 		}()
 		l.sendRecommendInteraction("comment_tweet", comment.Uid, comment.SnowTid, comment.SnowCid, comment.Content)
@@ -110,7 +110,7 @@ func (l *CreateCommentLogic) CreateComment(in *pb.CreateCommentReq) (*pb.CreateC
 		Uid: comment.Uid,
 	})
 	if err != nil {
-		logx.Errorf("CreateComment GetUserInfo RPC errorx, uid:%d, err:%v", comment.Uid, err)
+		l.Errorf("CreateComment GetUserInfo RPC errorx, uid:%d, err:%v", comment.Uid, err)
 		nickname = "用户"
 		avatar = ""
 	} else if userInfoResp.Code == 0 && userInfoResp.UserInfo != nil {
@@ -175,9 +175,9 @@ func (l *CreateCommentLogic) recordFailedMessage(comment *model.Comment) {
 	}
 
 	failedBody, _ := json.Marshal(failedMsg)
-	_, err := l.svcCtx.RedisClient.LpushCtx(l.ctx, "failed:comment:create", string(failedBody))
+	_, err := l.svcCtx.RedisClient.LpushCtx(context.Background(), "failed:comment:create", string(failedBody))
 	if err != nil {
-		logx.Errorf("recordFailedMessage lpush errorx: %v", err)
+		l.Errorf("recordFailedMessage lpush errorx: %v", err)
 	}
 }
 
@@ -186,7 +186,7 @@ func (l *CreateCommentLogic) sendTweetCommentNotification(comment *model.Comment
 	// 获取推文作者UID
 	recipientUid, err := l.svcCtx.GetTweetAuthorUid(context.Background(), comment.SnowTid)
 	if err != nil {
-		logx.Errorf("sendTweetCommentNotification GetTweetAuthorUid error: %v", err)
+		l.Errorf("sendTweetCommentNotification GetTweetAuthorUid error: %v", err)
 		return
 	}
 	// 自己评论自己的推文不发通知
@@ -209,12 +209,12 @@ func (l *CreateCommentLogic) sendTweetCommentNotification(comment *model.Comment
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendTweetCommentNotification marshal error: %v", err)
+		l.Errorf("sendTweetCommentNotification marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("notice")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("comment_%d_%d", recipientUid, comment.SnowCid), string(body)); err != nil {
-		logx.Errorf("sendTweetCommentNotification push error: %v", err)
+		l.Errorf("sendTweetCommentNotification push error: %v", err)
 	}
 }
 
@@ -230,11 +230,11 @@ func (l *CreateCommentLogic) sendRecommendInteraction(action string, uid, snowTi
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendRecommendInteraction marshal error: %v", err)
+		l.Errorf("sendRecommendInteraction marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("recommend_interaction")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowCid), string(body)); err != nil {
-		logx.Errorf("sendRecommendInteraction push error: %v", err)
+		l.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

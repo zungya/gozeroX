@@ -38,7 +38,7 @@ func (l *GetCommentsLogic) GetComments(in *pb.GetCommentsReq) (*pb.GetCommentsRe
 	// 2. 获取该推文的所有顶级评论snow_cid（先缓存后DB）
 	snowCids, err := l.svcCtx.GetTopCommentsBySnowTid(l.ctx, in.SnowTid)
 	if err != nil {
-		logx.Errorf("GetComments GetTopCommentsBySnowTid errorx: %v", err)
+		l.Errorf("GetComments GetTopCommentsBySnowTid errorx: %v", err)
 		return &pb.GetCommentsResp{
 			Code:     0,
 			Msg:      "success",
@@ -106,7 +106,7 @@ func (l *GetCommentsLogic) GetComments(in *pb.GetCommentsReq) (*pb.GetCommentsRe
 			Uids: uids,
 		})
 		if err != nil {
-			logx.Errorf("GetComments BatchGetUserBrief RPC errorx: %v", err)
+			l.Errorf("GetComments BatchGetUserBrief RPC errorx: %v", err)
 		} else if userBriefResp.Code == 0 {
 			for _, u := range userBriefResp.Users {
 				userBriefMap[u.Uid] = u
@@ -137,7 +137,7 @@ func (l *GetCommentsLogic) GetComments(in *pb.GetCommentsReq) (*pb.GetCommentsRe
 		})
 	}
 
-	logx.Infof("GetComments success, snowTid:%d, limit:%d, total:%d, return:%d",
+	l.Infof("GetComments success, snowTid:%d, limit:%d, total:%d, return:%d",
 		in.SnowTid, limit, total, len(commentInfos))
 
 	return &pb.GetCommentsResp{
@@ -166,6 +166,7 @@ func (l *GetCommentsLogic) batchGetComments(snowCids []int64) []*model.Comment {
 
 			comment, err := l.svcCtx.GetCommentBySnowCid(l.ctx, cid)
 			if err != nil {
+				l.Errorf("batchGetComments GetCommentBySnowCid error, cid:%d, err:%v", cid, err)
 				return
 			}
 

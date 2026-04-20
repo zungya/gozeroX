@@ -26,5 +26,6 @@ Prometheus:
 
 Log:
   ServiceName: noticeService-rpc
-  Mode: console
+  Mode: file
   Level: info
+  Path: logs/noticeService-rpc

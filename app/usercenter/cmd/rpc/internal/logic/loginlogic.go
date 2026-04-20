@@ -37,6 +37,7 @@ func (l *LoginLogic) Login(in *pb.LoginReq) (*pb.LoginResp, error) {
 				Msg:  "手机号未注册",
 			}, nil
 		}
+		l.Errorf("查询用户失败 mobile: %s, err: %v", in.Mobile, err)
 		return &pb.LoginResp{
 			Code: 1,
 			Msg:  "数据库查询失败",
@@ -46,6 +47,7 @@ func (l *LoginLogic) Login(in *pb.LoginReq) (*pb.LoginResp, error) {
 	// 2. 验证密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(in.Password))
 	if err != nil {
+		l.Infof("密码校验失败 uid: %d, err: %v", user.Uid, err)
 		return &pb.LoginResp{
 			Code: 1,
 			Msg:  "密码错误",
@@ -62,7 +64,9 @@ func (l *LoginLogic) Login(in *pb.LoginReq) (*pb.LoginResp, error) {
 
 	// 4. 更新最后登录时间（异步，不影响响应）
 	go func() {
-		_ = l.svcCtx.UserModel.UpdateLastLogin(context.Background(), user.Uid)
+		if err := l.svcCtx.UserModel.UpdateLastLogin(context.Background(), user.Uid); err != nil {
+			l.Errorf("更新最后登录时间失败 uid: %d, err: %v", user.Uid, err)
+		}
 	}()
 
 	// 5. 写入缓存（只存非敏感信息，用于其他地方读取）
@@ -71,6 +75,7 @@ func (l *LoginLogic) Login(in *pb.LoginReq) (*pb.LoginResp, error) {
 	// 6. 生成 JWT token
 	token, expire, err := l.svcCtx.GenerateJwtToken(user.Uid)
 	if err != nil {
+		l.Errorf("生成JWT token失败 uid: %d, err: %v", user.Uid, err)
 		return &pb.LoginResp{
 			Code: 1,
 			Msg:  "生成token失败",
@@ -107,12 +112,12 @@ func (l *LoginLogic) setUserCache(user *model.User) {
 	// 设置用户信息 Hash（过期时间 1 小时）
 	err := l.svcCtx.CacheManager.HSetAll(ctx, "user", "info", user.Uid, userHash)
 	if err != nil {
-		logx.Errorf("设置用户缓存失败 uid: %d, err: %v", user.Uid, err)
+		l.Errorf("设置用户缓存失败 uid: %d, err: %v", user.Uid, err)
 	}
 
 	// 设置 Hash 过期时间
 	err = l.svcCtx.CacheManager.Expire(ctx, "user", "info", user.Uid, 3600)
 	if err != nil {
-		logx.Errorf("设置缓存过期时间失败 uid: %d, err: %v", user.Uid, err)
+		l.Errorf("设置缓存过期时间失败 uid: %d, err: %v", user.Uid, err)
 	}
 }

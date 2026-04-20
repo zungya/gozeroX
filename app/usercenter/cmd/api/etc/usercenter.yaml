@@ -20,3 +20,10 @@ UsercenterRpcConf:
     - 127.0.0.1:2001
   NonBlock: true
 
+
+Log:
+  ServiceName: usercenter-api
+  Mode: file
+  Level: info
+  Path: logs/usercenter-api
+  KeepDays: 7

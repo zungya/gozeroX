@@ -29,7 +29,7 @@ func (l *GetUserAllLikesLogic) GetUserAllLikes(in *pb.GetUserAllLikesReq) (*pb.G
 	// 0. 增量同步优化：查 user_like_sync 表，如果 cursor == last_like_time 说明没有新的点赞操作
 	lastLikeTime, err := l.svcCtx.UserLikeSyncModel.FindLastLikeTime(l.ctx, in.Uid)
 	if err != nil {
-		logx.Errorf("GetUserAllLikes FindLastLikeTime error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetUserAllLikes FindLastLikeTime error, uid:%d, err:%v", in.Uid, err)
 		// 查询失败不阻塞，继续走正常流程
 	} else if in.Cursor != 0 && in.Cursor == lastLikeTime {
 		// cursor 匹配，说明没有新的点赞操作，直接返回空
@@ -44,7 +44,7 @@ func (l *GetUserAllLikesLogic) GetUserAllLikes(in *pb.GetUserAllLikesReq) (*pb.G
 	// 1. 查询用户所有推文点赞记录
 	tweetLikes, err := l.svcCtx.LikesTweetModel.FindAllByUid(l.ctx, in.Uid, in.Cursor)
 	if err != nil && err != model.ErrNotFound {
-		logx.Errorf("GetUserAllLikes query tweet likes errorx, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetUserAllLikes query tweet likes errorx, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetUserAllLikesResp{
 			Code: 120601,
 			Msg:  "查询推文点赞记录失败",
@@ -54,7 +54,7 @@ func (l *GetUserAllLikesLogic) GetUserAllLikes(in *pb.GetUserAllLikesReq) (*pb.G
 	// 2. 查询用户所有评论点赞记录
 	commentLikes, err := l.svcCtx.LikesCommentModel.FindAllByUid(l.ctx, in.Uid, in.Cursor)
 	if err != nil && err != model.ErrNotFound {
-		logx.Errorf("GetUserAllLikes query comment likes errorx, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetUserAllLikes query comment likes errorx, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetUserAllLikesResp{
 			Code: 120602,
 			Msg:  "查询评论点赞记录失败",

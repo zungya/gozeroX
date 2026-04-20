@@ -68,6 +68,19 @@ PID_API_RECOMMEND=$!
 echo "等待 API 服务就绪..."
 sleep 6
 
+# MQ 消费者服务
+echo -e "${GREEN}[MQ]${NC} 启动 interactService-mq (Kafka消费者)"
+go run app/interactService/cmd/mq/interactmq.go -f app/interactService/cmd/mq/etc/interact-mq-local.yaml &
+PID_MQ_INTERACT=$!
+
+echo -e "${GREEN}[MQ]${NC} 启动 noticeService-mq (Kafka消费者)"
+go run app/noticeService/cmd/mq/noticemq.go -f app/noticeService/cmd/mq/etc/notice-mq-local.yaml &
+PID_MQ_NOTICE=$!
+
+# 等待 MQ 服务启动
+echo "等待 MQ 消费者就绪..."
+sleep 3
+
 # 验证
 echo ""
 echo "============================================"
@@ -86,7 +99,7 @@ done
 
 if [ $FAIL -eq 0 ]; then
     echo ""
-    echo -e "${GREEN}全部 10 个服务启动成功！${NC}"
+    echo -e "${GREEN}全部 12 个服务启动成功！${NC}"
     echo "运行测试: bash test.sh"
 else
     echo ""
@@ -105,6 +118,8 @@ $PID_API_CONTENT
 $PID_API_INTERACT
 $PID_API_NOTICE
 $PID_API_RECOMMEND
+$PID_MQ_INTERACT
+$PID_MQ_NOTICE
 EOF
 
 echo "PID 已保存到 .local-pids（可用 bash stop-local.sh 停止）"

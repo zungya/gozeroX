@@ -1,8 +1,13 @@
 package config
 
-import "github.com/zeromicro/go-zero/core/stores/cache"
+import (
+	"github.com/zeromicro/go-zero/core/service"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+)
 
 type Config struct {
+	service.ServiceConf
+
 	DB struct {
 		DataSource string
 	}

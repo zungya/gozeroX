@@ -18,6 +18,14 @@ data:
     PythonRecommend:
       RecallUrl: http://localhost:2006/api/v1/recall
 
+    Log:
+      ServiceName: recommendService-rpc
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     ContentServiceRpcConf:
       Endpoints:
         - contentservice-rpc:2002

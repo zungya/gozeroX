@@ -100,24 +100,6 @@ func (s *ServiceContext) Close() {
 	}
 }
 
-// SendDeleteTweetMessage 发送删除推文消息到Kafka（用于异步删除关联数据）
-func (s *ServiceContext) SendDeleteTweetMessage(ctx context.Context, snowTid int64, uid int64) error {
-	message := map[string]interface{}{
-		"action":    "delete_tweet",
-		"snow_tid":  snowTid,
-		"uid":       uid,
-		"timestamp": time.Now().UnixMilli(),
-	}
-
-	body, err := json.Marshal(message)
-	if err != nil {
-		return err
-	}
-
-	pusher := s.GetPusher("tweet_operation")
-	return pusher.PushWithKey(ctx, fmt.Sprintf("delete_%d", snowTid), string(body))
-}
-
 // ==================== 推文缓存相关 ====================
 
 // SetTweetToCache 将推文存入Hash缓存

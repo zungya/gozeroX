@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"gozeroX/app/noticeService/cmd/mq/internal/svc"
 	"gozeroX/app/noticeService/model"
@@ -41,7 +43,7 @@ func (c *NoticeConsumer) Consume(ctx context.Context, key, value string) error {
 	case "comment_tweet", "reply_comment":
 		return c.handleComment(ctx, msg)
 	default:
-		logx.Errorf("NoticeConsumer unknown action: %s", action)
+		logx.Infof("NoticeConsumer unknown action: %s", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }
@@ -55,25 +57,7 @@ func (c *NoticeConsumer) handleLike(ctx context.Context, msg map[string]interfac
 	likerUid := toInt64(msg["liker_uid"])
 	snowTid := toInt64(msg["snow_tid"])
 	rootId := toInt64(msg["root_id"])
-	timestamp := toInt64(msg["timestamp"])
 
-	// 1. 查找该 target+接收者是否已存在通知
-	existing, err := c.svcCtx.NoticeLikeModel.FindByUidAndTarget(ctx, recipientUid, targetType, targetId)
-	if err != nil && err != model.ErrNotFound {
-		logx.Errorf("NoticeConsumer handleLike FindByUidAndTarget error: %v", err)
-		return err
-	}
-
-	if existing != nil {
-		// 2a. 已存在：更新 recent_uids（新的推到前面）、total_count 和 recent_count
-		newRecent1 := likerUid
-		newRecent2 := existing.RecentUid1
-		newTotal := existing.TotalCount + 1
-		newRecentCount := existing.RecentCount + 1
-		return c.svcCtx.NoticeLikeModel.UpdateAggregation(ctx, existing.SnowNid, newRecent1, newRecent2, newTotal, newRecentCount)
-	}
-
-	// 2b. 不存在：创建新的聚合记录
 	snowNid, err := idgen.GenID()
 	if err != nil {
 		logx.Errorf("NoticeConsumer handleLike GenID error: %v", err)
@@ -92,24 +76,12 @@ func (c *NoticeConsumer) handleLike(ctx context.Context, msg map[string]interfac
 		TotalCount:  1,
 		RecentCount: 1,
 		IsRead:      0,
-		CreatedAt:   timestamp,
-		UpdatedAt:   timestamp,
 		Status:      0,
 	}
 
-	_, err = c.svcCtx.NoticeLikeModel.Insert(ctx, notice)
-	if err != nil {
-		// 唯一索引冲突（并发场景）：回退到查找+更新
-		logx.Errorf("NoticeConsumer handleLike Insert error (may be unique conflict): %v", err)
-		existing, findErr := c.svcCtx.NoticeLikeModel.FindByUidAndTarget(ctx, recipientUid, targetType, targetId)
-		if findErr != nil {
-			return findErr
-		}
-		newRecent1 := likerUid
-		newRecent2 := existing.RecentUid1
-		newTotal := existing.TotalCount + 1
-		newRecentCount := existing.RecentCount + 1
-		return c.svcCtx.NoticeLikeModel.UpdateAggregation(ctx, existing.SnowNid, newRecent1, newRecent2, newTotal, newRecentCount)
+	if err := c.svcCtx.NoticeLikeModel.Upsert(ctx, notice); err != nil {
+		logx.Errorf("NoticeConsumer handleLike Upsert error: %v", err)
+		return err
 	}
 
 	logx.Infof("NoticeConsumer handleLike success, recipientUid:%d, targetType:%d, targetId:%d", recipientUid, targetType, targetId)
@@ -127,6 +99,7 @@ func (c *NoticeConsumer) handleCancelLike(ctx context.Context, msg map[string]in
 		if err == model.ErrNotFound {
 			return nil
 		}
+		logx.Errorf("NoticeConsumer handleCancelLike FindByUidAndTarget error: %v", err)
 		return err
 	}
 
@@ -174,10 +147,23 @@ func (c *NoticeConsumer) handleComment(ctx context.Context, msg map[string]inter
 
 	_, err = c.svcCtx.NoticeCommentModel.Insert(ctx, notice)
 	if err != nil {
+		// 主键冲突（并发写入 snow_nid 碰撞），等一小段时间后生成新 ID 重试
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505") {
+			logx.Infof("NoticeConsumer handleComment pkey conflict, retrying with new snow_nid")
+			time.Sleep(5 * time.Millisecond)
+			newNid, genErr := idgen.GenID()
+			if genErr != nil {
+				return genErr
+			}
+			notice.SnowNid = newNid
+			_, err = c.svcCtx.NoticeCommentModel.Insert(ctx, notice)
+		}
+	}
+	if err != nil {
 		logx.Errorf("NoticeConsumer handleComment Insert error: %v", err)
 		return err
 	}
 
-	logx.Infof("NoticeConsumer handleComment success, snowNid:%d, commenterUid:%d, recipientUid:%d", snowNid, notice.CommenterUid, notice.Uid)
+	logx.Infof("NoticeConsumer handleComment success, snowNid:%d, commenterUid:%d, recipientUid:%d", notice.SnowNid, notice.CommenterUid, notice.Uid)
 	return nil
 }

@@ -36,6 +36,18 @@ data:
       Endpoints:
         - contentservice-rpc:2002
       NonBlock: true
+
+    Kafka:
+      Addrs:
+        - kafka-0.kafka.gozerox.svc.cluster.local:9092
+
+    Log:
+      ServiceName: interactService-rpc
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
 ---
 apiVersion: apps/v1
 kind: Deployment

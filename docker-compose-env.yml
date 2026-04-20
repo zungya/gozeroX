@@ -65,6 +65,25 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - ./data/kafka/data:/var/lib/kafka/data
+    # 启动 Kafka 后自动创建 topics
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /etc/kafka/docker/run &
+        KAFKA_PID=$!
+        for i in $$(seq 1 60); do
+          if /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list > /dev/null 2>&1; then
+            echo "Kafka 就绪，开始创建 Topics..."
+            break
+          fi
+          sleep 1
+        done
+        for topic in comment_create like_tweet like_comment notice recommend_tweet recommend_interaction comment_status_sync; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+            --create --if-not-exists --topic $$topic --partitions 3 --replication-factor 1 2>/dev/null
+        done
+        echo "Kafka Topics 创建完成"
+        wait $$KAFKA_PID
     networks:
       - gozeroX_net
 

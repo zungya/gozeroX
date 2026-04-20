@@ -84,6 +84,7 @@ func (l *LikeLogic) likeComment(req *types.LikeReq, uid int64, updateTime int64)
 		SnowTid:     req.SnowTid,
 		Status:      req.Status,
 		UpdateTime:  updateTime,
+		IsReply:     req.IsReply,
 	})
 	if err != nil {
 		return nil, err

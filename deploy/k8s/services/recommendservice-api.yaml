@@ -15,6 +15,14 @@ data:
       Port: 4011
       Path: /metrics
 
+    Log:
+      ServiceName: recommendService-api
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     RecommendRpcConf:
       Endpoints:
         - recommendservice-rpc:2005

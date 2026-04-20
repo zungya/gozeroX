@@ -35,3 +35,10 @@ ContentServiceRpcConf:
   Endpoints:
     - 127.0.0.1:2002
   NonBlock: true
+
+Log:
+  ServiceName: interactService-mq
+  Mode: file
+  Level: info
+  Path: logs/interactService-mq
+  KeepDays: 7

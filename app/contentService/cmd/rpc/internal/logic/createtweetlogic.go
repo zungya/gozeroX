@@ -35,7 +35,7 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 	// 1. 生成雪花ID作为业务主键
 	snowTid, err := idgen.GenID()
 	if err != nil {
-		logx.Errorf("CreateTweet generate snowflake id error: %v", err)
+		l.Errorf("CreateTweet generate snowflake id error: %v", err)
 		return &pb.CreateTweetResp{
 			Code: 500,
 			Msg:  "生成推文ID失败",
@@ -60,7 +60,7 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 	// 3. 插入数据库
 	_, err = l.svcCtx.TweetModel.Insert(l.ctx, tweet)
 	if err != nil {
-		logx.Errorf("CreateTweet insert tweet error: %v", err)
+		l.Errorf("CreateTweet insert tweet error: %v", err)
 		return &pb.CreateTweetResp{
 			Code: 500,
 			Msg:  "发布推文失败",
@@ -69,27 +69,27 @@ func (l *CreateTweetLogic) CreateTweet(in *pb.CreateTweetReq) (*pb.CreateTweetRe
 
 	// 4. 存入Redis缓存
 	if err := l.svcCtx.SetTweetToCache(l.ctx, snowTid, tweet); err != nil {
-		logx.Errorf("CreateTweet SetTweetToCache error, snowTid:%d, err:%v", snowTid, err)
+		l.Errorf("CreateTweet SetTweetToCache error, snowTid:%d, err:%v", snowTid, err)
 	}
 
 	// 5. 异步更新用户推文数
 	go func() {
 		if err := l.svcCtx.IncrUserPostCount(context.Background(), in.Uid, 1); err != nil {
-			logx.Errorf("CreateTweet IncrUserPostCount error, uid:%d, err:%v", in.Uid, err)
+			l.Errorf("CreateTweet IncrUserPostCount error, uid:%d, err:%v", in.Uid, err)
 		}
 	}()
 
 	// 5.5 异步发送推文入库事件到 Kafka（推荐系统用）
 	go func() {
 		if err := l.sendRecommendIndexMessage(tweet); err != nil {
-			logx.Errorf("CreateTweet sendRecommendIndexMessage error, snowTid:%d, err:%v", snowTid, err)
+			l.Errorf("CreateTweet sendRecommendIndexMessage error, snowTid:%d, err:%v", snowTid, err)
 		}
 	}()
 
 	// 6. 获取用户信息（用于填充 nickname 和 avatar）
 	userResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{Uid: in.Uid})
 	if err != nil {
-		logx.Errorf("CreateTweet GetUserInfo error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("CreateTweet GetUserInfo error, uid:%d, err:%v", in.Uid, err)
 		// 用户信息获取失败，仍然返回推文（只是没有用户信息）
 		return &pb.CreateTweetResp{
 			Code:  0,

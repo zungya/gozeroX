@@ -48,7 +48,7 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 	// 3. 获取该根评论下的所有回复snow_cid（先缓存后DB）
 	replySnowCids, err := l.svcCtx.GetRepliesByRootId(l.ctx, in.RootCid)
 	if err != nil {
-		logx.Errorf("GetReplies GetRepliesByRootId errorx: %v", err)
+		l.Errorf("GetReplies GetRepliesByRootId errorx: %v", err)
 		return &pb.GetRepliesResp{
 			Code:    0,
 			Msg:     "success",
@@ -116,7 +116,7 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 			Uids: uids,
 		})
 		if err != nil {
-			logx.Errorf("GetReplies BatchGetUserBrief RPC errorx: %v", err)
+			l.Errorf("GetReplies BatchGetUserBrief RPC errorx: %v", err)
 		} else if userBriefResp.Code == 0 {
 			for _, u := range userBriefResp.Users {
 				userBriefMap[u.Uid] = u
@@ -149,7 +149,7 @@ func (l *GetRepliesLogic) GetReplies(in *pb.GetRepliesReq) (*pb.GetRepliesResp, 
 		})
 	}
 
-	logx.Infof("GetReplies success, rootCid:%d, limit:%d, total:%d, return:%d",
+	l.Infof("GetReplies success, rootCid:%d, limit:%d, total:%d, return:%d",
 		in.RootCid, limit, total, len(replyInfos))
 
 	return &pb.GetRepliesResp{
@@ -178,6 +178,7 @@ func (l *GetRepliesLogic) batchGetReplies(snowCids []int64) []*model.Reply {
 
 			reply, err := l.svcCtx.GetReplyBySnowCid(l.ctx, cid)
 			if err != nil {
+				l.Errorf("batchGetReplies GetReplyBySnowCid error, cid:%d, err:%v", cid, err)
 				return
 			}
 

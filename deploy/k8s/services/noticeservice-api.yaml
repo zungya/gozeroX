@@ -15,6 +15,14 @@ data:
       Port: 4008
       Path: /metrics
 
+    Log:
+      ServiceName: noticeService-api
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     NoticeServiceRpcConf:
       Endpoints:
         - noticeservice-rpc:2004

@@ -26,6 +26,14 @@ data:
         Pass: mTRT1XBhk9VgWb9n
         Type: node
 
+    Log:
+      ServiceName: noticeService-mq
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     Kafka:
       Brokers:
         - kafka:9092

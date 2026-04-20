@@ -34,6 +34,14 @@ data:
       LikeCommentTopic: like_comment
       Group: interact-mq
 
+    Log:
+      ServiceName: interactService-mq
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     ContentServiceRpcConf:
       Endpoints:
         - contentservice-rpc:2002

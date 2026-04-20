@@ -26,13 +26,13 @@ func NewGetUnreadCountLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 func (l *GetUnreadCountLogic) GetUnreadCount(in *pb.GetUnreadCountReq) (*pb.GetUnreadCountResp, error) {
 	likeUnread, err := l.svcCtx.NoticeLikeModel.CountUnreadByUid(l.ctx, in.Uid)
 	if err != nil {
-		logx.Errorf("GetUnreadCount CountUnreadByUid(like) error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetUnreadCount CountUnreadByUid(like) error, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetUnreadCountResp{Code: 130202, Msg: "查询未读数失败"}, nil
 	}
 
 	commentUnread, err := l.svcCtx.NoticeCommentModel.CountUnreadByUid(l.ctx, in.Uid)
 	if err != nil {
-		logx.Errorf("GetUnreadCount CountUnreadByUid(comment) error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetUnreadCount CountUnreadByUid(comment) error, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetUnreadCountResp{Code: 130202, Msg: "查询未读数失败"}, nil
 	}
 

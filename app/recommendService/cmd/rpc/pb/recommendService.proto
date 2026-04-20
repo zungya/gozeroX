@@ -8,15 +8,12 @@ package pb;
 message RecommendFeedReq {
   int64 uid = 1;
   int64 limit = 2;
-  int64 cursor = 3;
 }
 
 message RecommendFeedResp {
   int64 code = 1;
   string msg = 2;
   repeated TweetInfo tweets = 3;
-  int64 cursor = 4;
-  bool has_more = 5;
 }
 
 // ========== 推文展示信息（从 contentService 获取后填充） ==========

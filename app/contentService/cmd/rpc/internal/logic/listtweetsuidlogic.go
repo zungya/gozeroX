@@ -52,7 +52,7 @@ func (l *ListTweetsUidLogic) ListTweetsUid(in *pb.ListTweetsUidReq) (*pb.ListTwe
 	// 4. 查询数据库（使用游标分页）
 	tweets, total, err := l.svcCtx.TweetModel.FindByUid(l.ctx, in.QueryUid, isPublic, in.Cursor, in.Limit, "created_at", sortOrder)
 	if err != nil {
-		logx.Errorf("ListTweetsUid find tweets error: %v", err)
+		l.Errorf("ListTweetsUid find tweets error: %v", err)
 		return nil, err
 	}
 
@@ -60,7 +60,7 @@ func (l *ListTweetsUidLogic) ListTweetsUid(in *pb.ListTweetsUidReq) (*pb.ListTwe
 	var nickname, avatar string
 	userResp, err := l.svcCtx.UserCenterRpc.GetUserInfo(l.ctx, &usercenter.GetUserInfoReq{Uid: in.QueryUid})
 	if err != nil {
-		logx.Errorf("ListTweetsUid GetUserInfo error, uid:%d, err:%v", in.QueryUid, err)
+		l.Errorf("ListTweetsUid GetUserInfo error, uid:%d, err:%v", in.QueryUid, err)
 		// 用户信息获取失败，仍然返回推文（只是没有用户信息）
 	} else if userResp.Code == 0 && userResp.UserInfo != nil {
 		nickname = userResp.UserInfo.Nickname

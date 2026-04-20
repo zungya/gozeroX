@@ -44,18 +44,9 @@ func (m *customUserLikeSyncModel) FindLastLikeTime(ctx context.Context, uid int6
 	return record.LastLikeTime, nil
 }
 
-// Upsert 插入或更新用户最后点赞时间（INSERT ON CONFLICT UPDATE）
+// Upsert 插入或更新用户最后点赞时间（INSERT ON CONFLICT DO UPDATE，原子操作）
 func (m *customUserLikeSyncModel) Upsert(ctx context.Context, uid int64, lastLikeTime int64) error {
-	_, err := m.Insert(ctx, &UserLikeSync{
-		Uid:          uid,
-		LastLikeTime: lastLikeTime,
-	})
-	if err != nil {
-		// 主键冲突则走 Update
-		return m.Update(ctx, &UserLikeSync{
-			Uid:          uid,
-			LastLikeTime: lastLikeTime,
-		})
-	}
-	return nil
+	query := `INSERT INTO ` + m.table + ` (uid, last_like_time) VALUES ($1, $2) ON CONFLICT (uid) DO UPDATE SET last_like_time = EXCLUDED.last_like_time`
+	_, err := m.ExecNoCacheCtx(ctx, query, uid, lastLikeTime)
+	return err
 }

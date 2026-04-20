@@ -22,6 +22,18 @@ spec:
           ports:
             - containerPort: 9092
               name: kafka
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              /etc/kafka/docker/run &
+              KAFKA_PID=$!
+              sleep 10
+              for topic in comment_create like_tweet like_comment notice recommend_tweet recommend_interaction comment_status_sync; do
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+                  --create --if-not-exists --topic $$topic --partitions 3 --replication-factor 1 2>/dev/null
+              done
+              echo "Kafka Topics 创建完成"
+              wait $$KAFKA_PID
           env:
             - name: KAFKA_NODE_ID
               value: "1"

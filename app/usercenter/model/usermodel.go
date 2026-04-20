@@ -56,7 +56,7 @@ func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, 
 	// 3. 使用 RETURNING 子句
 	query := fmt.Sprintf(`
 		UPDATE %s 
-		SET %s = %s + $1, updated_at = CURRENT_TIMESTAMP 
+		SET %s = %s + $1, updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
 		WHERE uid = $2 
 		RETURNING %s - $1 AS before_val, %s AS after_val
 	`, m.table, field, field, field, field)
@@ -72,7 +72,7 @@ func (m *customUserModel) UpdateStatsWithValues(ctx context.Context, uid int64, 
 
 // UpdateLastLogin 更新最后登录时间
 func (m *customUserModel) UpdateLastLogin(ctx context.Context, uid int64) error {
-	query := fmt.Sprintf("UPDATE %s SET last_login_at = CURRENT_TIMESTAMP WHERE uid = $1", m.table)
+	query := fmt.Sprintf("UPDATE %s SET last_login_at = EXTRACT(EPOCH FROM NOW()) * 1000 WHERE uid = $1", m.table)
 	_, err := m.ExecNoCacheCtx(ctx, query, uid)
 	return err
 }

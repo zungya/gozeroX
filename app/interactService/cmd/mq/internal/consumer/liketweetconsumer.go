@@ -37,7 +37,7 @@ func (c *LikeTweetConsumer) Consume(ctx context.Context, key, value string) erro
 	case "update_like_tweet":
 		return c.handleUpdate(ctx, msg)
 	default:
-		logx.Errorf("LikeTweetConsumer unknown action: %s", action)
+		logx.Infof("LikeTweetConsumer unknown action: %s", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }

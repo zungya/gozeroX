@@ -12,14 +12,14 @@ scrape_configs:
   # ===== usercenter =====
   - job_name: 'user-api'
     static_configs:
-      - targets: ['usercenter-api:4001']
+      - targets: ['host.docker.internal:4001']
         labels:
           job: user-api
           app: user-api
           env: dev
   - job_name: 'user-rpc'
     static_configs:
-      - targets: ['usercenter-rpc:4002']
+      - targets: ['host.docker.internal:4002']
         labels:
           job: user-rpc
           app: user-rpc
@@ -28,14 +28,14 @@ scrape_configs:
   # ===== contentService =====
   - job_name: 'content-api'
     static_configs:
-      - targets: ['contentservice-api:4003']
+      - targets: ['host.docker.internal:4003']
         labels:
           job: content-api
           app: content-api
           env: dev
   - job_name: 'content-rpc'
     static_configs:
-      - targets: ['contentservice-rpc:4004']
+      - targets: ['host.docker.internal:4004']
         labels:
           job: content-rpc
           app: content-rpc
@@ -44,21 +44,21 @@ scrape_configs:
   # ===== interactService =====
   - job_name: 'interact-api'
     static_configs:
-      - targets: ['interactservice-api:4005']
+      - targets: ['host.docker.internal:4005']
         labels:
           job: interact-api
           app: interact-api
           env: dev
   - job_name: 'interact-rpc'
     static_configs:
-      - targets: ['interactservice-rpc:4006']
+      - targets: ['host.docker.internal:4006']
         labels:
           job: interact-rpc
           app: interact-rpc
           env: dev
   - job_name: 'interact-mq'
     static_configs:
-      - targets: ['interactservice-mq:4007']
+      - targets: ['host.docker.internal:4007']
         labels:
           job: interact-mq
           app: interact-mq
@@ -67,21 +67,21 @@ scrape_configs:
   # ===== noticeService =====
   - job_name: 'notice-api'
     static_configs:
-      - targets: ['noticeservice-api:4008']
+      - targets: ['host.docker.internal:4008']
         labels:
           job: notice-api
           app: notice-api
           env: dev
   - job_name: 'notice-rpc'
     static_configs:
-      - targets: ['noticeservice-rpc:4009']
+      - targets: ['host.docker.internal:4009']
         labels:
           job: notice-rpc
           app: notice-rpc
           env: dev
   - job_name: 'notice-mq'
     static_configs:
-      - targets: ['noticeservice-mq:4010']
+      - targets: ['host.docker.internal:4010']
         labels:
           job: notice-mq
           app: notice-mq
@@ -90,14 +90,14 @@ scrape_configs:
   # ===== recommendService =====
   - job_name: 'recommend-api'
     static_configs:
-      - targets: ['recommendservice-api:4011']
+      - targets: ['host.docker.internal:4011']
         labels:
           job: recommend-api
           app: recommend-api
           env: dev
   - job_name: 'recommend-rpc'
     static_configs:
-      - targets: ['recommendservice-rpc:4012']
+      - targets: ['host.docker.internal:4012']
         labels:
           job: recommend-rpc
           app: recommend-rpc
@@ -106,7 +106,7 @@ scrape_configs:
   # ===== python-recall =====
   - job_name: 'python-recall'
     static_configs:
-      - targets: ['python-recall:4013']
+      - targets: ['host.docker.internal:4013']
         labels:
           job: python-recall
           app: python-recall

@@ -28,14 +28,14 @@ func NewMarkReadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MarkRead
 func (l *MarkReadLogic) MarkRead(in *pb.MarkReadReq) (*pb.MarkReadResp, error) {
 	if in.NoticeType == 0 || in.NoticeType == 1 {
 		if err := l.svcCtx.NoticeLikeModel.MarkReadByUid(l.ctx, in.Uid); err != nil {
-			logx.Errorf("MarkRead MarkReadByUid(like) error, uid:%d, err:%v", in.Uid, err)
+			l.Errorf("MarkRead MarkReadByUid(like) error, uid:%d, err:%v", in.Uid, err)
 			return &pb.MarkReadResp{Code: 130202, Msg: "标记已读失败"}, nil
 		}
 	}
 
 	if in.NoticeType == 0 || in.NoticeType == 2 {
 		if err := l.svcCtx.NoticeCommentModel.MarkReadByUid(l.ctx, in.Uid); err != nil {
-			logx.Errorf("MarkRead MarkReadByUid(comment) error, uid:%d, err:%v", in.Uid, err)
+			l.Errorf("MarkRead MarkReadByUid(comment) error, uid:%d, err:%v", in.Uid, err)
 			return &pb.MarkReadResp{Code: 130202, Msg: "标记已读失败"}, nil
 		}
 	}

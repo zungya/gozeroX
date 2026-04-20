@@ -36,7 +36,7 @@ func (c *LikeCommentConsumer) Consume(ctx context.Context, key, value string) er
 	case "update_like_comment":
 		return c.handleUpdate(ctx, msg)
 	default:
-		logx.Errorf("LikeCommentConsumer unknown action: %s", action)
+		logx.Infof("LikeCommentConsumer unknown action: %s", action)
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }
@@ -59,7 +59,7 @@ func (c *LikeCommentConsumer) handleCreate(ctx context.Context, msg map[string]i
 	logx.Infof("LikeCommentConsumer insert success, snowLikesId:%d, uid:%d, snowCid:%d", like.SnowLikesId, like.Uid, like.SnowCid)
 
 	// 更新评论的点赞计数（新建 = +1）
-	c.updateCommentLikeCount(ctx, toInt64(msg["snow_cid"]), 1)
+	c.updateCommentLikeCount(ctx, toInt64(msg["snow_cid"]), 1, toInt64(msg["is_reply"]))
 
 	// 更新用户最后点赞时间（用于增量同步优化）
 	c.updateUserLikeSync(ctx, msg)
@@ -89,7 +89,7 @@ func (c *LikeCommentConsumer) handleUpdate(ctx context.Context, msg map[string]i
 	if toInt64(msg["status"]) == 0 {
 		delta = -1
 	}
-	c.updateCommentLikeCount(ctx, toInt64(msg["snow_cid"]), delta)
+	c.updateCommentLikeCount(ctx, toInt64(msg["snow_cid"]), delta, toInt64(msg["is_reply"]))
 
 	// 更新用户最后点赞时间（用于增量同步优化）
 	c.updateUserLikeSync(ctx, msg)
@@ -97,18 +97,18 @@ func (c *LikeCommentConsumer) handleUpdate(ctx context.Context, msg map[string]i
 	return nil
 }
 
-// updateCommentLikeCount 更新评论的点赞计数（先尝试 comment 表，再尝试 reply 表）
-func (c *LikeCommentConsumer) updateCommentLikeCount(ctx context.Context, snowCid int64, delta int64) {
+// updateCommentLikeCount 根据 is_reply 更新对应表的点赞计数
+func (c *LikeCommentConsumer) updateCommentLikeCount(ctx context.Context, snowCid int64, delta int64, isReply int64) {
 	if snowCid == 0 {
 		return
 	}
-	// 先尝试更新 comment 表
-	err := c.svcCtx.CommentModel.UpdateCount(ctx, snowCid, 1, delta)
-	if err != nil {
-		// comment 表没找到，尝试 reply 表
-		err = c.svcCtx.ReplyModel.UpdateCount(ctx, snowCid, 1, delta)
-		if err != nil {
+	if isReply == 0 {
+		if err := c.svcCtx.CommentModel.UpdateCount(ctx, snowCid, 1, delta); err != nil {
 			logx.Errorf("LikeCommentConsumer updateCommentLikeCount error, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+		}
+	} else {
+		if err := c.svcCtx.ReplyModel.UpdateCount(ctx, snowCid, 1, delta); err != nil {
+			logx.Errorf("LikeCommentConsumer updateReplyLikeCount error, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
 		}
 	}
 }

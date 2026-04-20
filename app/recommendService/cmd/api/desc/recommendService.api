@@ -23,15 +23,12 @@ type (
 	}
 	// 推荐Feed请求（uid 从 JWT 获取）
 	RecommendFeedReq {
-		Limit  int64 `form:"limit,default=8"`
-		Cursor int64 `form:"cursor,optional"`
+		Limit int64 `form:"limit,default=8"` // 请求数量
 	}
 	RecommendFeedResp {
-		Code    int64       `json:"code"`
-		Msg     string      `json:"msg"`
-		Data    []TweetInfo `json:"data"`
-		Cursor  int64       `json:"cursor"`
-		HasMore bool        `json:"hasMore"`
+		Code int64       `json:"code"`
+		Msg  string      `json:"msg"`
+		Data []TweetInfo `json:"data"`
 	}
 )
 

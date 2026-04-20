@@ -42,7 +42,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 		// 第一次操作：生成新的点赞记录
 		newId, err := idgen.GenID()
 		if err != nil {
-			logx.Errorf("LikeComment generate snowflake id errorx: %v", err)
+			l.Errorf("LikeComment generate snowflake id errorx: %v", err)
 			return &pb.LikeCommentResp{
 				Code: 120501,
 				Msg:  "生成点赞ID失败",
@@ -65,7 +65,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 		UpdatedAt:   now,
 	}
 	if err := l.sendLikeCommentMessage(likeRecord, in.IsCreated == 0, in.IsReply); err != nil {
-		logx.Errorf("LikeComment send queue message errorx, err:%v", err)
+		l.Errorf("LikeComment send queue message errorx, err:%v", err)
 	}
 
 	// 更新评论/回复点赞数缓存
@@ -79,7 +79,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendLikeCommentNotification panic: %v", r)
+				l.Errorf("sendLikeCommentNotification panic: %v", r)
 			}
 		}()
 		l.sendLikeCommentNotification(in.Uid, in.SnowCid, in.SnowTid, in.Status, in.IsReply)
@@ -89,7 +89,7 @@ func (l *LikeCommentLogic) LikeComment(in *pb.LikeCommentReq) (*pb.LikeCommentRe
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendRecommendInteraction panic: %v", r)
+				l.Errorf("sendRecommendInteraction panic: %v", r)
 			}
 		}()
 		action := "like_comment"
@@ -147,12 +147,12 @@ func (l *LikeCommentLogic) updateCommentLikeCount(snowCid int64, delta int, isRe
 	if isReply == 0 {
 		err := l.svcCtx.IncrCommentLikeCount(context.Background(), snowCid, delta)
 		if err != nil {
-			logx.Errorf("updateCommentLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+			l.Errorf("updateCommentLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
 		}
 	} else {
 		err := l.svcCtx.IncrReplyLikeCount(context.Background(), snowCid, delta)
 		if err != nil {
-			logx.Errorf("updateReplyLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
+			l.Errorf("updateReplyLikeCount errorx, snowCid:%d, delta:%d, err:%v", snowCid, delta, err)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 		// 根评论：查 comment 表
 		comment, err := l.svcCtx.GetCommentBySnowCid(context.Background(), snowCid)
 		if err != nil {
-			logx.Errorf("sendLikeCommentNotification GetCommentBySnowCid error: %v", err)
+			l.Errorf("sendLikeCommentNotification GetCommentBySnowCid error: %v", err)
 			return
 		}
 		recipientUid = comment.Uid
@@ -174,7 +174,7 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 		// 子评论：查 reply 表
 		reply, err := l.svcCtx.GetReplyBySnowCid(context.Background(), snowCid)
 		if err != nil {
-			logx.Errorf("sendLikeCommentNotification GetReplyBySnowCid error: %v", err)
+			l.Errorf("sendLikeCommentNotification GetReplyBySnowCid error: %v", err)
 			return
 		}
 		recipientUid = reply.Uid
@@ -203,13 +203,13 @@ func (l *LikeCommentLogic) sendLikeCommentNotification(likerUid, snowCid, snowTi
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendLikeCommentNotification marshal error: %v", err)
+		l.Errorf("sendLikeCommentNotification marshal error: %v", err)
 		return
 	}
 
 	pusher := l.svcCtx.GetPusher("notice")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_comment_%d_%d", recipientUid, snowCid), string(body)); err != nil {
-		logx.Errorf("sendLikeCommentNotification push error: %v", err)
+		l.Errorf("sendLikeCommentNotification push error: %v", err)
 	}
 }
 
@@ -225,11 +225,11 @@ func (l *LikeCommentLogic) sendRecommendInteraction(action string, uid, snowTid,
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendRecommendInteraction marshal error: %v", err)
+		l.Errorf("sendRecommendInteraction marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("recommend_interaction")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowCid), string(body)); err != nil {
-		logx.Errorf("sendRecommendInteraction push error: %v", err)
+		l.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

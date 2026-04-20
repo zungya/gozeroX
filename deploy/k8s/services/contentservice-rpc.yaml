@@ -27,6 +27,14 @@ data:
         Pass: mTRT1XBhk9VgWb9n
         Type: node
 
+    Log:
+      ServiceName: contentService-rpc
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     UserCenterRpcConf:
       Endpoints:
         - usercenter-rpc:2001

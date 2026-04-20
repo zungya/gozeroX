@@ -34,14 +34,14 @@ func (l *GetNoticesLogic) GetNotices(in *pb.GetNoticesReq) (*pb.GetNoticesResp, 
 	// 1. 查询点赞通知
 	likeNotices, err := l.svcCtx.NoticeLikeModel.FindByUid(l.ctx, in.Uid, in.Cursor, limit)
 	if err != nil {
-		logx.Errorf("GetNotices FindByUid(like) error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetNotices FindByUid(like) error, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetNoticesResp{Code: 130202, Msg: "查询点赞通知失败"}, nil
 	}
 
 	// 2. 查询评论通知
 	commentNotices, err := l.svcCtx.NoticeCommentModel.FindByUid(l.ctx, in.Uid, in.Cursor, limit)
 	if err != nil {
-		logx.Errorf("GetNotices FindByUid(comment) error, uid:%d, err:%v", in.Uid, err)
+		l.Errorf("GetNotices FindByUid(comment) error, uid:%d, err:%v", in.Uid, err)
 		return &pb.GetNoticesResp{Code: 130202, Msg: "查询评论通知失败"}, nil
 	}
 
@@ -68,7 +68,7 @@ func (l *GetNoticesLogic) GetNotices(in *pb.GetNoticesReq) (*pb.GetNoticesResp, 
 		}
 		resp, err := l.svcCtx.UserCenterRpc.BatchGetUserBrief(l.ctx, &usercenter.BatchUserBriefReq{Uids: uids})
 		if err != nil {
-			logx.Errorf("GetNotices BatchGetUserBrief error: %v", err)
+			l.Errorf("GetNotices BatchGetUserBrief error: %v", err)
 		} else if resp.Code == 0 {
 			for _, u := range resp.Users {
 				userMap[u.Uid] = u

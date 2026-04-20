@@ -19,3 +19,9 @@ InteractServiceRpcConf:
   Endpoints:
     - 127.0.0.1:2003
   NonBlock: true
+Log:
+  ServiceName: interactService-api
+  Mode: file
+  Level: info
+  Path: logs/interactService-api
+  KeepDays: 7

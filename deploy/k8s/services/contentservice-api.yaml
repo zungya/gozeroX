@@ -15,6 +15,14 @@ data:
       Port: 4003
       Path: /metrics
 
+    Log:
+      ServiceName: contentService-api
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     ContentServiceRpcConf:
       Endpoints:
         - contentservice-rpc:2002

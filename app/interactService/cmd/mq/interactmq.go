@@ -2,14 +2,19 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"gozeroX/app/interactService/cmd/mq/internal/config"
 	"gozeroX/app/interactService/cmd/mq/internal/consumer"
 	"gozeroX/app/interactService/cmd/mq/internal/svc"
+	"gozeroX/pkg/elog"
 
+	_ "github.com/lib/pq"
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 var configFile = flag.String("f", "etc/interact-mq.yaml", "指定配置文件")
@@ -19,6 +24,10 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	logx.MustSetup(c.Log)
+	elog.Setup("interactService-mq")
+	defer logx.Close()
+
 	ctx := svc.NewServiceContext(c)
 
 	commentConsumer := consumer.NewCommentConsumer(ctx)
@@ -34,6 +43,7 @@ func main() {
 			Conns:      1,
 			Consumers:  8,
 			Processors: 8,
+			Offset:     "first",
 		},
 		kq.WithHandle(commentConsumer.Consume),
 	)
@@ -47,6 +57,7 @@ func main() {
 			Conns:      1,
 			Consumers:  8,
 			Processors: 8,
+			Offset:     "first",
 		},
 		kq.WithHandle(likeTweetConsumer.Consume),
 	)
@@ -60,12 +71,25 @@ func main() {
 			Conns:      1,
 			Consumers:  8,
 			Processors: 8,
+			Offset:     "first",
 		},
 		kq.WithHandle(likeCommentConsumer.Consume),
 	)
 
-	fmt.Println("Starting interact-mq consumers...")
+	logx.Infof("Starting interact-mq consumers...")
+
+	// 优雅关闭
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	go commentQueue.Start()
 	go likeTweetQueue.Start()
-	likeCommentQueue.Start()
+	go likeCommentQueue.Start()
+
+	<-quit
+	logx.Infof("Shutting down interact-mq consumers...")
+	commentQueue.Stop()
+	likeTweetQueue.Stop()
+	likeCommentQueue.Stop()
+	logx.Infof("interact-mq consumers stopped.")
 }

@@ -41,20 +41,22 @@ func (l *GetRepliesLogic) GetReplies(req *types.GetRepliesReq) (resp *types.GetR
 		}, nil
 	}
 
+	// ReplyInfo 从 proto ReplyInfo 映射到 API CommentInfo（包含 parentId/rootId/isReply）
 	replies := make([]types.CommentInfo, 0, len(rpcResp.Replies))
-	for _, c := range rpcResp.Replies {
+	for _, r := range rpcResp.Replies {
 		replies = append(replies, types.CommentInfo{
-			SnowCid:    c.SnowCid,
-			SnowTid:    c.SnowTid,
-			Uid:        c.Uid,
-			NickName:   c.Nickname,
-			Avatar:     c.Avatar,
-			ParentId:   c.ParentId,
-			RootId:     c.RootId,
-			Content:    c.Content,
-			LikeCount:  c.LikeCount,
-			ReplyCount: c.ReplyCount,
-			CreateTime: c.CreateTime,
+			SnowCid:    r.SnowCid,
+			SnowTid:    r.SnowTid,
+			Uid:        r.Uid,
+			NickName:   r.Nickname,
+			Avatar:     r.Avatar,
+			ParentId:   r.ParentId,
+			RootId:     r.RootId,
+			Content:    r.Content,
+			LikeCount:  r.LikeCount,
+			ReplyCount: r.ReplyCount,
+			CreateTime: r.CreateTime,
+			IsReply:    1,
 		})
 	}
 

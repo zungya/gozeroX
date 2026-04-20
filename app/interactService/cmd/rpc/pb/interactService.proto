@@ -69,7 +69,8 @@ message CreateReplyResp {
 // 删除评论
 message DeleteCommentReq {
   int64 snow_cid = 1;
-  int64 uid = 2;    // 删除评论的用户ID，后端需要校验这个用户是否有权限删除这条评论（只能删除自己的评论或者管理员可以删除任何评论）
+  int64 uid = 2;    // 删除评论的用户ID
+  int64 is_reply = 3;   // 0=根评论（comment表），1=子评论（reply表）
 }
 
 message DeleteCommentResp {
@@ -145,6 +146,7 @@ message LikeCommentReq {
   int64 snow_tid =5;
   int64 status = 6;
   int64 updateTime = 7;
+  int64 is_reply = 8;   // 0=根评论（comment表），1=子评论（reply表）
 }
 
 message LikeTweetResp {

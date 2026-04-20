@@ -19,3 +19,9 @@ ContentServiceRpcConf:
   Endpoints:
     - 127.0.0.1:2002
   NonBlock: true
+Log:
+  ServiceName: contentService-api
+  Mode: file
+  Level: info
+  Path: logs/contentService-api
+  KeepDays: 7

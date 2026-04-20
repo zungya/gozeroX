@@ -42,7 +42,7 @@ func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, erro
 		// 第一次操作：生成新的点赞记录
 		newId, err := idgen.GenID()
 		if err != nil {
-			logx.Errorf("LikeTweet generate snowflake id errorx: %v", err)
+			l.Errorf("LikeTweet generate snowflake id errorx: %v", err)
 			return &pb.LikeTweetResp{
 				Code: 120401,
 				Msg:  "生成点赞ID失败",
@@ -64,7 +64,7 @@ func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, erro
 		UpdatedAt:   now,
 	}
 	if err := l.sendLikeTweetMessage(likeRecord, in.IsCreated == 0); err != nil {
-		logx.Errorf("LikeTweet send queue message errorx, err:%v", err)
+		l.Errorf("LikeTweet send queue message errorx, err:%v", err)
 	}
 
 	// 更新推文点赞数缓存
@@ -78,7 +78,7 @@ func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, erro
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendLikeTweetNotification panic: %v", r)
+				l.Errorf("sendLikeTweetNotification panic: %v", r)
 			}
 		}()
 		l.sendLikeTweetNotification(in.Uid, in.SnowTid, in.Status)
@@ -88,7 +88,7 @@ func (l *LikeTweetLogic) LikeTweet(in *pb.LikeTweetReq) (*pb.LikeTweetResp, erro
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logx.Errorf("sendRecommendInteraction panic: %v", r)
+				l.Errorf("sendRecommendInteraction panic: %v", r)
 			}
 		}()
 		action := "like_tweet"
@@ -142,7 +142,7 @@ func (l *LikeTweetLogic) sendLikeTweetMessage(like *model.LikesTweet, isNew bool
 func (l *LikeTweetLogic) updateTweetLikeCount(snowTid int64, delta int) {
 	_, err := l.svcCtx.CacheManager.HIncrBy(context.Background(), "tweet", "info", snowTid, "like_count", delta)
 	if err != nil {
-		logx.Errorf("updateTweetLikeCount errorx, snowTid:%d, delta:%d, err:%v", snowTid, delta, err)
+		l.Errorf("updateTweetLikeCount errorx, snowTid:%d, delta:%d, err:%v", snowTid, delta, err)
 	}
 }
 
@@ -151,7 +151,7 @@ func (l *LikeTweetLogic) sendLikeTweetNotification(likerUid, snowTid int64, stat
 	// 1. 获取推文作者UID（通知接收者）
 	recipientUid, err := l.svcCtx.GetTweetAuthorUid(context.Background(), snowTid)
 	if err != nil {
-		logx.Errorf("sendLikeTweetNotification GetTweetAuthorUid error: %v", err)
+		l.Errorf("sendLikeTweetNotification GetTweetAuthorUid error: %v", err)
 		return
 	}
 	// 自己赞自己的推文不发通知
@@ -177,14 +177,14 @@ func (l *LikeTweetLogic) sendLikeTweetNotification(likerUid, snowTid int64, stat
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendLikeTweetNotification marshal error: %v", err)
+		l.Errorf("sendLikeTweetNotification marshal error: %v", err)
 		return
 	}
 
 	// 3. 发送到 notice topic
 	pusher := l.svcCtx.GetPusher("notice")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("like_tweet_%d_%d", recipientUid, snowTid), string(body)); err != nil {
-		logx.Errorf("sendLikeTweetNotification push error: %v", err)
+		l.Errorf("sendLikeTweetNotification push error: %v", err)
 	}
 }
 
@@ -200,11 +200,11 @@ func (l *LikeTweetLogic) sendRecommendInteraction(action string, uid, snowTid, s
 	}
 	body, err := json.Marshal(message)
 	if err != nil {
-		logx.Errorf("sendRecommendInteraction marshal error: %v", err)
+		l.Errorf("sendRecommendInteraction marshal error: %v", err)
 		return
 	}
 	pusher := l.svcCtx.GetPusher("recommend_interaction")
 	if err := pusher.PushWithKey(context.Background(), fmt.Sprintf("%d_%d", uid, snowTid), string(body)); err != nil {
-		logx.Errorf("sendRecommendInteraction push error: %v", err)
+		l.Errorf("sendRecommendInteraction push error: %v", err)
 	}
 }

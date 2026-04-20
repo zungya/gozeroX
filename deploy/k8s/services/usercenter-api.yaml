@@ -19,6 +19,14 @@ data:
       AccessSecret: a7f3d9c1e5b8290f4a6e8d2c7b5a3f9e1
       AccessExpire: 86400
 
+    Log:
+      ServiceName: usercenter-api
+      Mode: console
+      Level: info
+      Path: logs
+      KeepDays: 7
+      StackCooldownMillis: 100
+
     UserCenterRpcConf:
       Endpoints:
         - usercenter-rpc:2001

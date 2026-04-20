@@ -34,12 +34,11 @@ func (l *FeedLogic) Feed(req *types.RecommendFeedReq) (resp *types.RecommendFeed
 
 	// 调用 recommendService RPC
 	rpcResp, err := l.svcCtx.RecommendRpc.RecommendFeed(l.ctx, &recommend.RecommendFeedReq{
-		Uid:    uid,
-		Limit:  req.Limit,
-		Cursor: req.Cursor,
+		Uid:   uid,
+		Limit: req.Limit,
 	})
 	if err != nil {
-		logx.Errorf("Feed RecommendRpc.RecommendFeed error, uid:%d, err:%v", uid, err)
+		l.Errorf("Feed RecommendRpc.RecommendFeed error, uid:%d, err:%v", uid, err)
 		return &types.RecommendFeedResp{
 			Code: 500,
 			Msg:  "推荐服务调用失败",
@@ -64,10 +63,8 @@ func (l *FeedLogic) Feed(req *types.RecommendFeedReq) (resp *types.RecommendFeed
 	}
 
 	return &types.RecommendFeedResp{
-		Code:    rpcResp.Code,
-		Msg:     rpcResp.Msg,
-		Data:    tweets,
-		Cursor:  rpcResp.Cursor,
-		HasMore: rpcResp.HasMore,
+		Code: rpcResp.Code,
+		Msg:  rpcResp.Msg,
+		Data: tweets,
 	}, nil
 }
